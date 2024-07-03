@@ -43,7 +43,7 @@ class AnimatedGraphApp:
         self.amp_scale.pack(pady=5)
         
         # Botão Quit
-        self.quit_button = ctk.CTkButton(self.frame_right, text="Quit", command=self.quit_app)
+        self.quit_button = ctk.CTkButton(self.frame_right, text="FECHAR", command=self.quit_app)
         self.quit_button.pack(pady=20)
         
         # Configuração do gráfico 3D
@@ -90,7 +90,64 @@ class AnimatedGraphApp:
         self.root.quit()
         self.root.destroy()
 
-if __name__ == "__main__":
-    root = ctk.CTk()
-    app = AnimatedGraphApp(root)
-    root.mainloop()
+# if __name__ == "__main__":
+#     root = ctk.CTk()
+#     app = AnimatedGraphApp(root)
+#     root.mainloop()
+
+
+
+# fucao que recebe um vetor com os IDs da ordem do caminho gerado e plota esse caminho em 3D
+def plota_caminho(caminho):
+    tam = len(caminho)
+    ax = plt.figure().add_subplot(projection='3d')
+
+
+    coordenadas_plot = np.arange(((tam) * 3), dtype=float)
+    coordenadas_plot = coordenadas_plot.reshape(tam, 3)
+
+    coordenadas_x = np.arange(tam, dtype=float)
+    coordenadas_y = np.arange(tam, dtype=float)
+    coordenadas_z = np.arange(tam, dtype=float)
+
+    match tam:
+        case 101:
+            coordenadas = open_dataset("datasets\\star100.xyz.txt")
+        case 10001:
+            coordenadas = open_dataset("datasets\\star1k.xyz.txt")
+        case 37860:
+            coordenadas = open_dataset("datasets\\kj37859.xyz.txt")  
+        case 109400:
+            coordenadas = open_dataset("datasets\\hyg109399.xyz.txt")   
+    
+    for i in range(tam):
+        coordenadas_x[i] = coordenadas[caminho[i]][1]
+        coordenadas_y[i] = coordenadas[caminho[i]][2]
+        coordenadas_z[i] = coordenadas[caminho[i]][3]
+
+    ax.scatter(coordenadas_x[1:tam - 1], coordenadas_y[1:tam - 1],
+               coordenadas_z[1:tam - 1], c='blue', s=15)
+
+    ax.plot(coordenadas_x, coordenadas_y, coordenadas_z, color='k')
+
+    ax.scatter(0, 0, 0, c='orange', s=80)
+
+    plt.show()
+
+#############################################################################################################################################
+
+def open_dataset(dataset_neme):
+    matriz = []
+    with open(dataset_neme, 'r') as arquivo:
+        linhas = arquivo.readlines()
+        for idx, linha in enumerate(linhas):
+            valores = linha.split()
+            if len(valores) == 3:
+                x, y, z = map(float, valores)
+                matriz.append([idx, x, y, z])
+    return np.array(matriz)
+
+caminho = [0, 3, 1, 2, 4, 7, 23, 41, 16, 9, 28, 40, 38, 35, 66, 75, 91, 86, 46, 64, 44, 77, 82, 69, 63, 55, 45, 31, 27, 20, 59, 74, 76, 68, 56, 12, 11, 24, 17, 43, 84, 70, 52, 51, 81, 60, 78, 39, 37, 5, 10, 34, 48, 50, 85, 79, 80, 65, 62, 36, 25, 29, 67, 89, 33, 53, 49, 94, 92, 88, 15, 21, 26, 6, 22, 8, 19, 18, 30, 99, 95, 98, 42, 54, 57, 72, 61, 73, 87, 97, 13, 14, 32, 58, 93, 83, 71, 96, 90, 47, 0]
+
+print(len(caminho))
+plota_caminho(caminho)
