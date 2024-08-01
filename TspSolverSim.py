@@ -12,67 +12,248 @@ class AnimatedGraphApp:
 
         self.caminho = [0, 3, 1, 2, 4, 7, 23, 41, 16, 9, 28, 40, 38, 35, 66, 75, 91, 86, 46, 64, 44, 77, 82, 69, 63, 55, 45, 31, 27, 20, 59, 74, 76, 68, 56, 12, 11, 24, 17, 43, 84, 70, 52, 51, 81, 60, 78, 39, 37, 5, 10, 34, 48, 50, 85, 79, 80, 65, 62, 36, 25, 29, 67, 89, 33, 53, 49, 94, 92, 88, 15, 21, 26, 6, 22, 8, 19, 18, 
 30, 99, 95, 98, 42, 54, 57, 72, 61, 73, 87, 97, 13, 14, 32, 58, 93, 83, 71, 96, 90, 47, 0]
+        self.distancia_caminho = self.calcula_distancia_caminho()
+        self.distancia_o = self.get_distancia_otima()
+        self.prox_caminho_o = self.get_prox_caminho_o()
         self.root = root
         self.root.title("Gráfico 3D Animado com Customização")
         ctk.set_appearance_mode("dark")  # Modo escuro
         ctk.set_default_color_theme("dark-blue")  # Tema azul escuro
 
         # Definir o tamanho da janela para Full HD
-        self.root.geometry("1920x1080")
+        self.root.geometry("1810x1080")
 
         # Configuração do layout
-        self.frame_right = ctk.CTkFrame(self.root)
-        self.frame_right.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
-        
         self.frame_left = ctk.CTkFrame(self.root)
         self.frame_left.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
-
-        self.root.grid_columnconfigure(0, weight=1)
-        self.root.grid_columnconfigure(1, weight=0)
-        self.root.grid_rowconfigure(0, weight=1)
         
+        self.frame_middle = ctk.CTkFrame(self.root)
+        self.frame_middle.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
+        self.frame_middle.configure(fg_color="black")
+
+        self.frame_right = ctk.CTkFrame(self.root)
+        self.frame_right.grid(row=0, column=2, sticky="nsew", padx=10, pady=10)
+
+        self.root.grid_columnconfigure(0, weight=0)
+        self.root.grid_columnconfigure(1, weight=1)
+        self.root.grid_columnconfigure(2, weight=1)
+        self.root.grid_rowconfigure(0, weight=1)
+
         # Parâmetros de customização
-        self.param_label = ctk.CTkLabel(self.frame_right, text="Parâmetros de Customização")
+        self.param_label = ctk.CTkLabel(self.frame_left, text="Parâmetros de Customização")
         self.param_label.pack(pady=5)
 
-        self.algoritmo_label = ctk.CTkLabel(self.frame_right, text="Algoritmo:")
+        self.algoritmo_label = ctk.CTkLabel(self.frame_left, text="Algoritmo:")
         self.algoritmo_label.pack(pady=5)
-        self.algoritmo_var = ctk.StringVar(value="Selecionar")
-        self.algoritmo_select = ctk.CTkComboBox(self.frame_right, variable=self.algoritmo_var, values=["Nearest Neighbor (NN)", "Genetic Algorithm (GA)", "Ant Colony Optimization (ACO)"])
+        self.algoritmo_var = ctk.StringVar(value="Nearest Neighbor (NN)")
+        self.algoritmo_select = ctk.CTkComboBox(self.frame_left, variable=self.algoritmo_var, values=["Nearest Neighbor (NN)", "Genetic Algorithm (GA)", "Ant Colony Optimization (ACO)"], command=self.on_algoritmo_select)
         self.algoritmo_select.pack(pady=5)
 
-        self.dataset_label = ctk.CTkLabel(self.frame_right, text="Dataset:")
+        self.dataset_label = ctk.CTkLabel(self.frame_left, text="Dataset:")
         self.dataset_label.pack(pady=5)
-        self.dataset_var = ctk.StringVar(value="Selecionar")
-        self.dataset_select = ctk.CTkComboBox(self.frame_right, variable=self.dataset_var, values=["100 Estrelas", "1.000 Estrelas", "10.000 Estrelas", "37.859 Estrelas", "109.399 Estrelas"])
+        self.dataset_var = ctk.StringVar(value="100 Estrelas")
+        self.dataset_select = ctk.CTkComboBox(self.frame_left, variable=self.dataset_var, values=["100 Estrelas", "1.000 Estrelas", "10.000 Estrelas", "37.859 Estrelas", "109.399 Estrelas"])
         self.dataset_select.pack(pady=5)
+
+        # Hiperparâmetros para Algoritmo Genético
+        self.mutacao_label = ctk.CTkLabel(self.frame_left, text="Taxa de Mutação:")
+        self.mutacao_label.pack(pady=5)
+        self.mutacao_slider = ctk.CTkSlider(self.frame_left, from_=0.00, to=1.00, number_of_steps=100, command=self.update_mutacao)
+        self.mutacao_slider.pack(pady=5)
+        self.mutacao_var = ctk.StringVar(value="0.00")
+        self.mutacao_entry = ctk.CTkEntry(self.frame_left, textvariable=self.mutacao_var)
+        self.mutacao_entry.pack(pady=5)
+
+        self.populacao_label = ctk.CTkLabel(self.frame_left, text="Tamanho da População:")
+        self.populacao_label.pack(pady=5)
+        self.populacao_entry = ctk.CTkEntry(self.frame_left)
+        self.populacao_entry.pack(pady=5)
+
+        self.iteracoes_label = ctk.CTkLabel(self.frame_left, text="Número de Iterações:")
+        self.iteracoes_label.pack(pady=5)
+        self.iteracoes_entry = ctk.CTkEntry(self.frame_left)
+        self.iteracoes_entry.pack(pady=5)
+
+        # Botão para plotar o melhor caminho
+        self.plot_best_path_button = ctk.CTkButton(self.frame_left, text="Plotar Melhor Caminho", command=self.plot_best_path)
+        self.plot_best_path_button.pack(pady=20)
+        
+        # Inicialmente, ocultar os parâmetros de GA
+        self.toggle_ga_params(False)
         
         # Botao Run
-        self.run_button = ctk.CTkButton(self.frame_right, text="RUN", command=self.run_algoritmo)
+        self.run_button = ctk.CTkButton(self.frame_left, text="RUN", command=self.run_algoritmo)
         self.run_button.pack(pady=20)
 
-        # Botão Quit
-        self.quit_button = ctk.CTkButton(self.frame_right, text="FECHAR", command=self.quit_app)
-        self.quit_button.pack(pady=20)
+        # Seção de Resultados
+        self.result_label = ctk.CTkLabel(self.frame_right, text="Resultados")
+        self.result_label.pack(pady=5)
+        
+        self.caminho_label = ctk.CTkLabel(self.frame_right, text="Caminho:")
+        self.caminho_label.pack(pady=5)
+        self.caminho_text = ctk.CTkTextbox(self.frame_right, height=300, width=400)
+        self.caminho_text.pack(pady=5)
+        self.caminho_text.insert(ctk.END, self.caminho)
+        
+        self.distancia_label = ctk.CTkLabel(self.frame_right, text="Distância Total:")
+        self.distancia_label.pack(pady=5)
+        self.distancia_text = ctk.CTkTextbox(self.frame_right, height=10, width=150)
+        self.distancia_text.pack(pady=5)
+        self.distancia_text.insert(ctk.END, f"{self.distancia_caminho:.2f}")
+
+        self.distancia_o_label = ctk.CTkLabel(self.frame_right, text="Distância Ótima:")
+        self.distancia_o_label.pack(pady=5)
+        self.distancia_o_text = ctk.CTkTextbox(self.frame_right, height=10, width=150)
+        self.distancia_o_text.pack(pady=5)
+        self.distancia_o_text.insert(ctk.END, f"{self.distancia_o:.2f}")
+
+        self.proximidade_caminho_o_label = ctk.CTkLabel(self.frame_right, text="Proximidade caminho ótimo:")
+        self.proximidade_caminho_o_label.pack(pady=5)
+        self.proximidade_caminho_o_text = ctk.CTkTextbox(self.frame_right, height=10, width=150)
+        self.proximidade_caminho_o_text.pack(pady=5)
+        self.proximidade_caminho_o_text.insert(ctk.END, f"{self.prox_caminho_o:.2f} %")
         
         # Configuração do gráfico 3D
         self.fig = plt.figure()
+        self.fig.subplots_adjust(left=0, bottom=0, right=1, top=1)
         self.ax = self.fig.add_subplot(111, projection='3d')
+        # Remover as bordas do gráfico
+        self.ax.set_axis_off()
+
+        # Ajuste das bordas do plot
         self.plota_caminho(self.caminho)
         
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.frame_left)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.frame_middle)
         self.canvas.get_tk_widget().pack(fill=ctk.BOTH, expand=True)
 
         # Configurar o protocolo de fechamento de janela
         self.root.protocol("WM_DELETE_WINDOW", self.quit_app)
-        
+    
     def update_graph(self):
         # Limpar o gráfico atual
         self.ax.clear()
+        self.ax.set_axis_off()
+
         
         # Plotar o novo caminho
         self.plota_caminho(self.caminho)
         
+        # Atualizar o canvas com o novo gráfico
+        self.canvas.draw()
+
+        self.caminho_text.delete("1.0", ctk.END)
+        self.caminho_text.insert(ctk.END, self.caminho)
+        self.distancia_caminho = self.calcula_distancia_caminho()
+        self.distancia_text.delete("1.0", ctk.END)
+        self.distancia_text.insert(ctk.END, f"{self.distancia_caminho:.2f}")
+        self.distancia_o = self.get_distancia_otima()
+        self.distancia_o_text.delete("1.0", ctk.END)
+        self.distancia_o_text.insert(ctk.END, f"{self.distancia_o:.2f}")
+        self.prox_caminho_o = self.get_prox_caminho_o()
+        self.proximidade_caminho_o_text.delete("1.0", ctk.END)
+        self.proximidade_caminho_o_text.insert(ctk.END, f"{self.prox_caminho_o:.2f} %")
+
+    def get_distancia_otima(self):
+        tam = len(self.caminho)
+        match tam:
+            case 101:
+                return 1795
+            case 1001:
+                return 22227
+            case 10001:
+                return 276750
+            case 37860:
+                return 28235453  
+            case 109400:
+                return 13750874
+            
+    def get_prox_caminho_o(self):
+        return (self.distancia_o/self.distancia_caminho) * 100
+    
+    def on_algoritmo_select(self, event=None):
+        selected_algo = self.algoritmo_var.get()
+        print(f"Algoritmo selecionado: {selected_algo}")  # Verificação de debug
+        if selected_algo == "Genetic Algorithm (GA)":
+            print("Exibindo parâmetros de GA")  # Verificação de debug
+            self.toggle_ga_params(True)
+        else:
+            print("Ocultando parâmetros de GA")  # Verificação de debug
+            self.toggle_ga_params(False)
+
+    def toggle_ga_params(self, show):
+        if show:
+            self.mutacao_label.pack(pady=5)
+            self.mutacao_slider.pack(pady=5)
+            self.mutacao_entry.pack(pady=5)
+            self.populacao_label.pack(pady=5)
+            self.populacao_entry.pack(pady=5)
+            self.iteracoes_label.pack(pady=5)
+            self.iteracoes_entry.pack(pady=5)
+        else:
+            self.mutacao_label.pack_forget()
+            self.mutacao_slider.pack_forget()
+            self.mutacao_entry.pack_forget()
+            self.populacao_label.pack_forget()
+            self.populacao_entry.pack_forget()
+            self.iteracoes_label.pack_forget()
+            self.iteracoes_entry.pack_forget()
+    
+    def update_mutacao(self, value):
+        self.mutacao_var.set(f"{float(value):.2f}")
+
+    def plot_best_path(self):
+        dataset_tour = "star100_tour.txt"
+        
+        match self.dataset_select.get():
+            case "100 Estrelas":
+                dataset_tour = "star100_tour.txt"
+                dataset_name = "star100.xyz.txt"
+            case "1.000 Estrelas":
+                dataset_tour = "star1k_tour.txt"
+                dataset_name = "star1k.xyz.txt"
+            case "10.000 Estrelas":
+                dataset_tour = "star10k_tour.txt"
+                dataset_name = "star10k.xyz.txt"
+            case "37.859 Estrelas":
+                dataset_tour = "kj37859_tour.txt"
+                dataset_name = "kj37859.xyz.txt"
+            case "109.399 Estrelas":
+                dataset_tour = "hyg109399_tour.txt"
+                dataset_name = "hyg109399.xyz.txt"
+    
+        # Nome do arquivo do melhor caminho (alterar conforme necessário)
+        best_path_file = "best_paths/" + dataset_tour
+        
+        # Carregar o melhor caminho do arquivo
+        with open(best_path_file, 'r') as file:
+            best_path = [int(line.strip()) for line in file]
+
+        for i in range(len(best_path)):
+            best_path[i] = best_path[i] - 1
+        
+        # Adicionar o melhor caminho ao gráfico
+        self.ax.clear()
+        self.ax.set_axis_off()
+        
+        # Plotar o caminho atual
+        self.plota_caminho(self.caminho)
+        
+        # Plotar o melhor caminho
+        tam = len(best_path)
+        coordenadas_x = np.zeros(tam, dtype=float)
+        coordenadas_y = np.zeros(tam, dtype=float)
+        coordenadas_z = np.zeros(tam, dtype=float)
+        
+        # Assumindo que você já tem uma função para abrir o dataset
+        coordenadas = self.open_dataset("datasets\\" + dataset_name)  # Altere o nome do arquivo conforme necessário
+        
+        for i in range(tam):
+            coordenadas_x[i] = coordenadas[best_path[i]][1]
+            coordenadas_y[i] = coordenadas[best_path[i]][2]
+            coordenadas_z[i] = coordenadas[best_path[i]][3]
+        
+        self.ax.plot(coordenadas_x, coordenadas_y, coordenadas_z, color='red', linewidth=1)
+
         # Atualizar o canvas com o novo gráfico
         self.canvas.draw()
 
@@ -82,15 +263,6 @@ class AnimatedGraphApp:
         dataset = self.dataset_var.get()
         dataset_size = "100"
         dataset_name = "star100.xyz.txt"
-
-        # Corrige nomes algoritmo e dataset
-        match algoritmo:
-            case "Nearest Neighbor (NN)":
-                algoritmo = "c_scripts\\nn.exe"
-            case "Genetic Algorithm (GA)":
-                algoritmo = "c_scripts\\ga.exe"
-            case "Ant Colony Optimization (ACO)":
-                algoritmo = "c_scripts\\aco.exe"
 
         match dataset:
             case "100 Estrelas":
@@ -108,15 +280,33 @@ class AnimatedGraphApp:
             case "109.399 Estrelas":
                 dataset_name = "hyg109399.xyz.txt"
                 dataset_size = "109399"
-        
-        print("algoritmo: " + algoritmo + " dataset: " + dataset_name + " dataset_size: " + dataset_size)
 
-        # Lógica para chamar o código em C e obter o caminho
-        process = subprocess.Popen([algoritmo, dataset_name, dataset_size], 
+        match algoritmo:
+            case "Nearest Neighbor (NN)":
+                algoritmo = "c_scripts\\nn.exe"
+                process = subprocess.Popen([algoritmo, dataset_name, dataset_size, ], 
                                     stdout=subprocess.PIPE, 
                                     stderr=subprocess.PIPE, 
                                     text=True)
+                
+            case "Genetic Algorithm (GA)":
+                algoritmo = "c_scripts\\ga.exe"
+
+                print(algoritmo + " " + dataset_name + " " + dataset_size + " " + self.mutacao_entry.get() + " " + self.populacao_entry.get() + " " + self.iteracoes_entry.get())
+                process = subprocess.Popen([algoritmo, dataset_name, dataset_size, self.mutacao_entry.get(), self.populacao_entry.get(), self.iteracoes_entry.get()], 
+                                    stdout=subprocess.PIPE, 
+                                    stderr=subprocess.PIPE, 
+                                    text=True)
+                
+            case "Ant Colony Optimization (ACO)":
+                algoritmo = "c_scripts\\aco.exe"
+                process = subprocess.Popen([algoritmo, dataset_name, dataset_size], 
+                            stdout=subprocess.PIPE, 
+                            stderr=subprocess.PIPE, 
+                            text=True)
         
+        print("algoritmo: " + algoritmo + " dataset: " + dataset_name + " dataset_size: " + dataset_size)
+
         # Espera até que o processo termine
         stdout, stderr = process.communicate()
 
@@ -131,7 +321,30 @@ class AnimatedGraphApp:
         
         # Atualizar o gráfico na interface
         self.update_graph()
-
+    
+    def calcula_distancia_caminho(self):
+        distancia_caminho = 0.0
+        tam = len(self.caminho)
+        
+        match tam:
+            case 101:
+                coordenadas = self.open_dataset("datasets\\star100.xyz.txt")
+            case 1001:
+                coordenadas = self.open_dataset("datasets\\star1k.xyz.txt")
+            case 10001:
+                coordenadas = self.open_dataset("datasets\\star10k.xyz.txt")
+            case 37860:
+                coordenadas = self.open_dataset("datasets\\kj37859.xyz.txt")  
+            case 109400:
+                coordenadas = self.open_dataset("datasets\\hyg109399.xyz.txt")
+        
+        for i in range(tam - 1):
+            x1, y1, z1 = coordenadas[self.caminho[i]][1], coordenadas[self.caminho[i]][2], coordenadas[self.caminho[i]][3]
+            x2, y2, z2 = coordenadas[self.caminho[i+1]][1], coordenadas[self.caminho[i+1]][2], coordenadas[self.caminho[i+1]][3]
+            distancia = np.sqrt((x2 - x1)**2 + (y2 - y1)**2 + (z2 - z1)**2)
+            distancia_caminho += distancia
+    
+        return distancia_caminho
 
     def quit_app(self):
         self.root.quit()
@@ -155,8 +368,6 @@ class AnimatedGraphApp:
         coordenadas_y = np.arange(tam, dtype=float)
         coordenadas_z = np.arange(tam, dtype=float)
 
-        print(tam)
-
         match tam:
             case 101:
                 coordenadas = self.open_dataset("datasets\\star100.xyz.txt")
@@ -175,11 +386,11 @@ class AnimatedGraphApp:
             coordenadas_z[i] = coordenadas[caminho[i]][3]
 
         self.ax.scatter(coordenadas_x[1:tam - 1], coordenadas_y[1:tam - 1],
-                    coordenadas_z[1:tam - 1], c='blue', s=0.3)
+                    coordenadas_z[1:tam - 1], c='red', s=0.1)
 
-        self.ax.plot(coordenadas_x, coordenadas_y, coordenadas_z, color='k', linewidth=0.2)
+        self.ax.plot(coordenadas_x, coordenadas_y, coordenadas_z, color='yellow', linewidth=1)
 
-        self.ax.scatter(0, 0, 0, c='orange', s=30)
+        self.ax.scatter(0, 0, 0, c='orange', s=15)
         return self.fig, self.ax
     
     def open_dataset(self, dataset_neme):
@@ -197,9 +408,13 @@ if __name__ == "__main__":
     root = ctk.CTk()
     app = AnimatedGraphApp(root)
 
-    toolbar_frame = ctk.CTkFrame(app.frame_left)
+    toolbar_frame = ctk.CTkFrame(app.frame_middle)
     toolbar_frame.pack(side=ctk.TOP, fill=ctk.X)
     toolbar = NavigationToolbar2Tk(app.canvas, toolbar_frame)
     toolbar.update()
     
     root.mainloop()
+
+# star100.xyz.txt 0.36 123 123
+# star100.xyz.txt 100 0.01 10 100
+# star100.xyz.txt 100 0.08 100 100

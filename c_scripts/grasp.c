@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <math.h> // Para utilizar as funções sqrt() e pow()
+#include <math.h>
+#include <float.h>
+#include <time.h>
 
 // Estrutura para representar uma coordenada
 typedef struct
@@ -15,15 +17,12 @@ typedef struct
 // Função para calcular a distância entre dois pontos em 3D
 float calcularDistancia(CoordenadaEstrela ponto1, CoordenadaEstrela ponto2)
 {
-    float distancia;
-    distancia = sqrt(pow(ponto2.x - ponto1.x, 2) + pow(ponto2.y - ponto1.y, 2) + pow(ponto2.z - ponto1.z, 2));
-    return distancia;
+    return sqrt(pow(ponto2.x - ponto1.x, 2) + pow(ponto2.y - ponto1.y, 2) + pow(ponto2.z - ponto1.z, 2));
 }
 
 // Função para criar a matriz de distâncias
 float **criarMatrizDistancias(CoordenadaEstrela *coordenadas, int tamanho)
 {
-    // printf("inicia\n");
     float **matrizDistancias = (float **)malloc(tamanho * sizeof(float *));
     if (matrizDistancias == NULL)
     {
@@ -35,16 +34,14 @@ float **criarMatrizDistancias(CoordenadaEstrela *coordenadas, int tamanho)
         matrizDistancias[i] = (float *)malloc(tamanho * sizeof(float));
         if (matrizDistancias[i] == NULL)
         {
-            printf("Erro ao alocar memória para matrizDistancias[%d]");
+            printf("Erro ao alocar memória para matrizDistancias[%d]", i);
             exit(EXIT_FAILURE);
         }
         for (int j = 0; j < tamanho; j++)
         {
             matrizDistancias[i][j] = calcularDistancia(coordenadas[i], coordenadas[j]);
         }
-        // printf("linha: %d\t", i);
     }
-    // printf("finaliza");
     return matrizDistancias;
 }
 
@@ -58,16 +55,16 @@ void liberarMatrizDistancias(float **matrizDistancias, int tamanho)
     free(matrizDistancias);
 }
 
-// Função para percorrer o vetor de coordenadas e calcular a distância total entre estrelas consecutivas
-float calcularDistanciaTotal(CoordenadaEstrela *coordenadas, int tamanho)
+// Função para calcular a distância total de um caminho
+float calcularDistanciaTotal(int *caminho, float **matrizDistancias, int tamanho)
 {
     float distanciaTotal = 0.0;
-    for (int i = 0; i < tamanho - 1; i += 2)
+    for (int i = 0; i < tamanho - 2; i++)
     {
-        distanciaTotal += calcularDistancia(coordenadas[i], coordenadas[i + 1]);
+        distanciaTotal += matrizDistancias[caminho[i]][caminho[i + 1]];
+        printf("distanciatotal = %f\n", distanciaTotal);
     }
-
-    distanciaTotal += calcularDistancia(coordenadas[tamanho - 1], coordenadas[0]);
+    distanciaTotal += matrizDistancias[caminho[tamanho - 1]][caminho[0]]; // Retorno ao ponto inicial
     return distanciaTotal;
 }
 
@@ -75,7 +72,7 @@ float calcularDistanciaTotal(CoordenadaEstrela *coordenadas, int tamanho)
 int encontrarProximoPontoMaisProximo(float **matrizDistancias, bool *visitado, int pontoAtual, int tamanho)
 {
     int proximoPonto = -1;
-    float menorDistancia = INFINITY;
+    float menorDistancia = FLT_MAX;
 
     for (int i = 0; i < tamanho; i++)
     {
@@ -93,13 +90,52 @@ int encontrarProximoPontoMaisProximo(float **matrizDistancias, bool *visitado, i
     return proximoPonto;
 }
 
-// ALGORITMO GULOSO
-// Função para encontrar a rota usando o algoritmo guloso
-void algoritmoGulosoVizinhoMaisProximo(CoordenadaEstrela *coordenadas, float **matrizDistancias, int tamanho, int *caminho, float *distanciaTotal)
+// Função para realizar a busca local usando o 2-opt
+void buscaLocal2Opt(int *caminho, float **matrizDistancias, int tamanho)
+{
+    printf(" 0 \n");
+    bool melhora = true;
+    while (melhora)
+    {
+        melhora = false;
+        for (int i = 1; i < tamanho - 1; i++)
+        {
+            for (int j = i + 1; j < tamanho; j++)
+            {
+                // Troca duas arestas e calcula a nova distância total
+                int tmp = caminho[i];
+                caminho[i] = caminho[j];
+                caminho[j] = tmp;
+
+                printf(" 1 \n");
+
+                float novaDistancia = calcularDistanciaTotal(caminho, matrizDistancias, tamanho);
+                float antigaDistancia = calcularDistanciaTotal(caminho, matrizDistancias, tamanho);
+
+                if (novaDistancia < antigaDistancia)
+                {
+                    printf(" 2 \n");
+
+                    melhora = true;
+                }
+                else
+                {
+                    // Reverter a troca se não houver melhora
+                    printf(" 3 \n");
+                    tmp = caminho[i];
+                    caminho[i] = caminho[j];
+                    caminho[j] = tmp;
+                }
+            }
+        }
+    }
+}
+
+// Função para encontrar a rota inicial usando uma estratégia gulosa aleatória
+void construcaoGulosaAleatoria(CoordenadaEstrela *coordenadas, float **matrizDistancias, int tamanho, int *caminho, float *distanciaTotal)
 {
     bool *visitado = (bool *)calloc(tamanho, sizeof(bool));
     int pontoAtual = 0;
-
     visitado[pontoAtual] = true;
     caminho[0] = coordenadas[pontoAtual].id;
 
@@ -107,17 +143,65 @@ void algoritmoGulosoVizinhoMaisProximo(CoordenadaEstrela *coordenadas, float **m
 
     for (int i = 1; i < tamanho; i++)
     {
-        int proximoPonto = encontrarProximoPontoMaisProximo(matrizDistancias, visitado, pontoAtual, tamanho);
+        int proximoPonto;
+        int candidatos[tamanho];
+        int numCandidatos = 0;
+        float alpha = 0.3; // Parâmetro de aleatoriedade
+
+        // Construir lista de candidatos
+        for (int j = 0; j < tamanho; j++)
+        {
+            if (!visitado[j] && j != pontoAtual)
+            {
+                candidatos[numCandidatos++] = j;
+            }
+        }
+
+        // Selecionar próximo ponto aleatoriamente dentre os candidatos
+        proximoPonto = candidatos[rand() % numCandidatos];
+
         caminho[i] = coordenadas[proximoPonto].id;
         *distanciaTotal += matrizDistancias[pontoAtual][proximoPonto];
         visitado[proximoPonto] = true;
-        pontoAtual = proximoPonto; // Atualizando o ponto atual para o próximo ponto selecionado
+        pontoAtual = proximoPonto;
     }
 
     *distanciaTotal += matrizDistancias[pontoAtual][0];
-    caminho[tamanho + 1] = coordenadas[0].id;
+    caminho[tamanho] = coordenadas[0].id;
 
     free(visitado);
+}
+
+// Função para executar o algoritmo GRASP
+void algoritmoGRASP(CoordenadaEstrela *coordenadas, float **matrizDistancias, int tamanho, int *melhorCaminho, float *melhorDistancia)
+{
+    int iteracoes = 100;
+    *melhorDistancia = FLT_MAX;
+
+    for (int i = 0; i < iteracoes; i++)
+    {
+        int caminho[tamanho + 1];
+        float distanciaAtual;
+
+        // Construção da solução inicial
+        construcaoGulosaAleatoria(coordenadas, matrizDistancias, tamanho, caminho, &distanciaAtual);
+        printf("CONST GULOSA");
+
+        // Busca local com 2-opt
+        buscaLocal2Opt(caminho, matrizDistancias, tamanho);
+        printf("2opt");
+
+        // Atualiza o melhor caminho encontrado
+        float distanciaFinal = calcularDistanciaTotal(caminho, matrizDistancias, tamanho);
+        if (distanciaFinal < *melhorDistancia)
+        {
+            *melhorDistancia = distanciaFinal;
+            for (int j = 0; j < tamanho; j++)
+            {
+                melhorCaminho[j] = caminho[j];
+            }
+        }
+    }
 }
 
 // Função para extrair coordenadas
@@ -161,16 +245,12 @@ CoordenadaEstrela *lerCoordenadas(const char *nomeArquivo, int *tamanho)
 
     fclose(arquivo);
 
-    // Definir o tamanho do vetor
     *tamanho = linhas;
-
-    // Retornar o vetor de coordenadas
     return coordenadas;
 }
 
 int main(int argc, char *argv[])
 {
-    // Verifica se o nome do arquivo foi passado como argumento
     if (argc < 2)
     {
         fprintf(stderr, "Uso: %s <nomeArquivo>\n", argv[0]);
@@ -186,37 +266,32 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Tamanho inválido: %s\n", argv[2]);
         return EXIT_FAILURE;
     }
-    CoordenadaEstrela *coordenadas = (CoordenadaEstrela *)malloc(tamanho * sizeof(CoordenadaEstrela));
 
-    if (coordenadas == NULL)
-    {
-        fprintf(stderr, "Erro ao alocar memória para coordenadas.\n");
-        return EXIT_FAILURE;
-    }
-
-    coordenadas = lerCoordenadas(nomeArquivo, &tamanho);
-
+    CoordenadaEstrela *coordenadas = lerCoordenadas(nomeArquivo, &tamanho);
     float **matrizDistancias = criarMatrizDistancias(coordenadas, tamanho);
 
-    int caminho[tamanho + 1];
-    float distanciaGuloso;
+    int melhorCaminho[tamanho + 1];
+    float melhorDistancia;
 
-    algoritmoGulosoVizinhoMaisProximo(coordenadas, matrizDistancias, tamanho, caminho, &distanciaGuloso);
+    srand(time(NULL)); // Inicializa o gerador de números aleatórios
 
-    // Imprime o caminho
-    printf("[");
+    algoritmoGRASP(coordenadas, matrizDistancias, tamanho, melhorCaminho, &melhorDistancia);
+
+    printf("Melhor caminho: [");
     for (int i = 0; i < tamanho; i++)
     {
         if (i < tamanho - 1)
         {
-            printf("%d, ", caminho[i] - 1);
+            printf("%d, ", melhorCaminho[i] - 1);
         }
         else
         {
-            printf("%d", caminho[i] - 1);
+            printf("%d", melhorCaminho[i] - 1);
         }
     }
-    printf(", 0]");
+    printf("]\n");
+
+    printf("Menor distância encontrada: %f\n", melhorDistancia);
 
     liberarMatrizDistancias(matrizDistancias, tamanho);
     free(coordenadas);
