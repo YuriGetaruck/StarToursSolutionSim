@@ -6,6 +6,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.animation as animation
 import numpy as np
 import subprocess
+import threading
 
 class AnimatedGraphApp:
     def __init__(self, root):
@@ -262,70 +263,74 @@ class AnimatedGraphApp:
 
 
     def run_algoritmo(self):
-        # Lógica para chamar o código em C aqui
-        algoritmo = self.algoritmo_var.get()
-        dataset = self.dataset_var.get()
-        dataset_size = "100"
-        dataset_name = "star100.xyz.txt"
+        def run():
+            # Lógica para chamar o código em C aqui
+            algoritmo = self.algoritmo_var.get()
+            dataset = self.dataset_var.get()
+            dataset_size = "100"
+            dataset_name = "star100.xyz.txt"
 
-        match dataset:
-            case "100 Estrelas":
-                dataset_name = "star100.xyz.txt"
-                dataset_size = "100"
-            case "1.000 Estrelas":
-                dataset_name = "star1k.xyz.txt"
-                dataset_size = "1000"
-            case "10.000 Estrelas":
-                dataset_name = "star10k.xyz.txt"
-                dataset_size = "10000"
-            case "37.859 Estrelas":
-                dataset_name = "kj37859.xyz.txt"
-                dataset_size = "37859"
-            case "109.399 Estrelas":
-                dataset_name = "hyg109399.xyz.txt"
-                dataset_size = "109399"
+            match dataset:
+                case "100 Estrelas":
+                    dataset_name = "star100.xyz.txt"
+                    dataset_size = "100"
+                case "1.000 Estrelas":
+                    dataset_name = "star1k.xyz.txt"
+                    dataset_size = "1000"
+                case "10.000 Estrelas":
+                    dataset_name = "star10k.xyz.txt"
+                    dataset_size = "10000"
+                case "37.859 Estrelas":
+                    dataset_name = "kj37859.xyz.txt"
+                    dataset_size = "37859"
+                case "109.399 Estrelas":
+                    dataset_name = "hyg109399.xyz.txt"
+                    dataset_size = "109399"
 
-        match algoritmo:
-            case "Nearest Neighbor (NN)":
-                algoritmo = "c_scripts\\nn.exe"
-                process = subprocess.Popen([algoritmo, dataset_name, dataset_size, ], 
-                                    stdout=subprocess.PIPE, 
-                                    stderr=subprocess.PIPE, 
-                                    text=True)
-                
-            case "Genetic Algorithm (GA)":
-                algoritmo = "c_scripts\\ga.exe"
+            match algoritmo:
+                case "Nearest Neighbor (NN)":
+                    algoritmo = "c_scripts\\nn.exe"
+                    process = subprocess.Popen([algoritmo, dataset_name, dataset_size], 
+                                        stdout=subprocess.PIPE, 
+                                        stderr=subprocess.PIPE, 
+                                        text=True)
+                    
+                case "Genetic Algorithm (GA)":
+                    algoritmo = "c_scripts\\ga.exe"
+                    print(algoritmo + " " + dataset_name + " " + dataset_size + " " + self.mutacao_entry.get() + " " + self.populacao_entry.get() + " " + self.iteracoes_entry.get())
+                    process = subprocess.Popen([algoritmo, dataset_name, dataset_size, self.mutacao_entry.get(), self.populacao_entry.get(), self.iteracoes_entry.get()], 
+                                        stdout=subprocess.PIPE, 
+                                        stderr=subprocess.PIPE, 
+                                        text=True)
+                    
+                case "Ant Colony Optimization (ACO)":
+                    algoritmo = "c_scripts\\aco.exe"
+                    process = subprocess.Popen([algoritmo, dataset_name, dataset_size], 
+                                stdout=subprocess.PIPE, 
+                                stderr=subprocess.PIPE, 
+                                text=True)
+            
+            print("algoritmo: " + algoritmo + " dataset: " + dataset_name + " dataset_size: " + dataset_size)
 
-                print(algoritmo + " " + dataset_name + " " + dataset_size + " " + self.mutacao_entry.get() + " " + self.populacao_entry.get() + " " + self.iteracoes_entry.get())
-                process = subprocess.Popen([algoritmo, dataset_name, dataset_size, self.mutacao_entry.get(), self.populacao_entry.get(), self.iteracoes_entry.get()], 
-                                    stdout=subprocess.PIPE, 
-                                    stderr=subprocess.PIPE, 
-                                    text=True)
-                
-            case "Ant Colony Optimization (ACO)":
-                algoritmo = "c_scripts\\aco.exe"
-                process = subprocess.Popen([algoritmo, dataset_name, dataset_size], 
-                            stdout=subprocess.PIPE, 
-                            stderr=subprocess.PIPE, 
-                            text=True)
-        
-        print("algoritmo: " + algoritmo + " dataset: " + dataset_name + " dataset_size: " + dataset_size)
+            # Espera até que o processo termine
+            stdout, stderr = process.communicate()
 
-        # Espera até que o processo termine
-        stdout, stderr = process.communicate()
+            # print(stdout)
+            # print(stderr)
+            
+            numeros_strings = stdout[1:-1].split(', ')
+            caminho_resutado = [int(num) for num in numeros_strings]
 
-        # print(stdout)
-        # print(stderr)
-        
-        numeros_strings = stdout[1:-1].split(', ')
-        caminho_resutado = [int(num) for num in numeros_strings]
+            # Atualizar o caminho com o resultado do algoritmo
+            self.caminho = caminho_resutado
+            print("Caminho válido: " + str(self.valida_caminho()))
+            
+            # Atualizar o gráfico na interface
+            self.update_graph()
 
-        # Atualizar o caminho com o resultado do algoritmo
-        self.caminho = caminho_resutado
-        print("Caminho válido: " + str(self.valida_caminho()))
-        
-        # Atualizar o gráfico na interface
-        self.update_graph()
+        # Cria e inicia a thread para executar o algoritmo
+        thread = threading.Thread(target=run)
+        thread.start()
     
     def calcula_distancia_caminho(self):
         distancia_caminho = 0.0
