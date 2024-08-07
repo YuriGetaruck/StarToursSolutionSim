@@ -75,8 +75,8 @@ class AnimatedGraphApp:
         self.iteracoes_entry.pack(pady=5)
 
         # Botão para plotar o melhor caminho
-        self.plot_best_path_button = ctk.CTkButton(self.frame_left, text="Plotar Melhor Caminho", command=self.plot_best_path)
-        self.plot_best_path_button.pack(pady=20)
+        self.plot_best_path_checkbox = ctk.CTkCheckBox(self.frame_left, text="Plotar Melhor Caminho", command=self.plot_best_path_checkbox_command)
+        self.plot_best_path_checkbox.pack(pady=20)
         
         # Inicialmente, ocultar os parâmetros de GA
         self.toggle_ga_params(False)
@@ -201,61 +201,65 @@ class AnimatedGraphApp:
     def update_mutacao(self, value):
         self.mutacao_var.set(f"{float(value):.2f}")
 
-    def plot_best_path(self):
-        dataset_tour = "star100_tour.txt"
+    def plot_best_path_checkbox_command(self):
+        if(self.plot_best_path_checkbox.get() == 1):
+            dataset_tour = "star100_tour.txt"
+            
+            match self.dataset_select.get():
+                case "100 Estrelas":
+                    dataset_tour = "star100_tour.txt"
+                    dataset_name = "star100.xyz.txt"
+                case "1.000 Estrelas":
+                    dataset_tour = "star1k_tour.txt"
+                    dataset_name = "star1k.xyz.txt"
+                case "10.000 Estrelas":
+                    dataset_tour = "star10k_tour.txt"
+                    dataset_name = "star10k.xyz.txt"
+                case "37.859 Estrelas":
+                    dataset_tour = "kj37859_tour.txt"
+                    dataset_name = "kj37859.xyz.txt"
+                case "109.399 Estrelas":
+                    dataset_tour = "hyg109399_tour.txt"
+                    dataset_name = "hyg109399.xyz.txt"
         
-        match self.dataset_select.get():
-            case "100 Estrelas":
-                dataset_tour = "star100_tour.txt"
-                dataset_name = "star100.xyz.txt"
-            case "1.000 Estrelas":
-                dataset_tour = "star1k_tour.txt"
-                dataset_name = "star1k.xyz.txt"
-            case "10.000 Estrelas":
-                dataset_tour = "star10k_tour.txt"
-                dataset_name = "star10k.xyz.txt"
-            case "37.859 Estrelas":
-                dataset_tour = "kj37859_tour.txt"
-                dataset_name = "kj37859.xyz.txt"
-            case "109.399 Estrelas":
-                dataset_tour = "hyg109399_tour.txt"
-                dataset_name = "hyg109399.xyz.txt"
-    
-        # Nome do arquivo do melhor caminho (alterar conforme necessário)
-        best_path_file = "best_paths/" + dataset_tour
-        
-        # Carregar o melhor caminho do arquivo
-        with open(best_path_file, 'r') as file:
-            best_path = [int(line.strip()) for line in file]
+            # Nome do arquivo do melhor caminho (alterar conforme necessário)
+            best_path_file = "best_paths/" + dataset_tour
+            
+            # Carregar o melhor caminho do arquivo
+            with open(best_path_file, 'r') as file:
+                best_path = [int(line.strip()) for line in file]
 
-        for i in range(len(best_path)):
-            best_path[i] = best_path[i] - 1
-        
-        # Adicionar o melhor caminho ao gráfico
-        self.ax.clear()
-        self.ax.set_axis_off()
-        
-        # Plotar o caminho atual
-        self.plota_caminho(self.caminho)
-        
-        # Plotar o melhor caminho
-        tam = len(best_path)
-        coordenadas_x = np.zeros(tam, dtype=float)
-        coordenadas_y = np.zeros(tam, dtype=float)
-        coordenadas_z = np.zeros(tam, dtype=float)
-        
-        # Assumindo que você já tem uma função para abrir o dataset
-        coordenadas = self.open_dataset("datasets\\" + dataset_name)  # Altere o nome do arquivo conforme necessário
-        
-        for i in range(tam):
-            coordenadas_x[i] = coordenadas[best_path[i]][1]
-            coordenadas_y[i] = coordenadas[best_path[i]][2]
-            coordenadas_z[i] = coordenadas[best_path[i]][3]
-        
-        self.ax.plot(coordenadas_x, coordenadas_y, coordenadas_z, color='red', linewidth=1)
+            for i in range(len(best_path)):
+                best_path[i] = best_path[i] - 1
+            
+            # Adicionar o melhor caminho ao gráfico
+            self.ax.clear()
+            self.ax.set_axis_off()
+            
+            # Plotar o caminho atual
+            self.plota_caminho(self.caminho)
+            
+            # Plotar o melhor caminho
+            tam = len(best_path)
+            coordenadas_x = np.zeros(tam, dtype=float)
+            coordenadas_y = np.zeros(tam, dtype=float)
+            coordenadas_z = np.zeros(tam, dtype=float)
+            
+            # Assumindo que você já tem uma função para abrir o dataset
+            coordenadas = self.open_dataset("datasets\\" + dataset_name)  # Altere o nome do arquivo conforme necessário
+            
+            for i in range(tam):
+                coordenadas_x[i] = coordenadas[best_path[i]][1]
+                coordenadas_y[i] = coordenadas[best_path[i]][2]
+                coordenadas_z[i] = coordenadas[best_path[i]][3]
+            
+            self.ax.plot(coordenadas_x, coordenadas_y, coordenadas_z, color='red', linewidth=1)
 
-        # Atualizar o canvas com o novo gráfico
-        self.canvas.draw()
+            # Atualizar o canvas com o novo gráfico
+            self.canvas.draw()
+        else:
+            self.update_graph()
+
 
     def run_algoritmo(self):
         # Lógica para chamar o código em C aqui
@@ -310,14 +314,15 @@ class AnimatedGraphApp:
         # Espera até que o processo termine
         stdout, stderr = process.communicate()
 
-        print(stdout)
-        print(stderr)
+        # print(stdout)
+        # print(stderr)
         
         numeros_strings = stdout[1:-1].split(', ')
         caminho_resutado = [int(num) for num in numeros_strings]
 
         # Atualizar o caminho com o resultado do algoritmo
         self.caminho = caminho_resutado
+        print("Caminho válido: " + str(self.valida_caminho()))
         
         # Atualizar o gráfico na interface
         self.update_graph()
@@ -403,6 +408,24 @@ class AnimatedGraphApp:
                     x, y, z = map(float, valores)
                     matriz.append([idx, x, y, z])
         return np.array(matriz)
+    
+    def valida_caminho(self):
+        # Verifica se o primeiro e o último elemento são 0
+        if self.caminho[0] != 0 or self.caminho[-1] != 0:
+            return False
+        
+        # Cria um conjunto dos números esperados
+        numeros_esperados = np.arange(len(self.caminho) - 1)
+        numeros_esperados = np.insert(numeros_esperados, 0, 0)
+        
+        # Cria um conjunto dos números presentes no caminho, exceto o último 0
+        numeros_no_caminho = np.sort(self.caminho)
+        
+        # Verifica se todos os números esperados estão presentes e se são únicos (exceto o último 0)
+        if numeros_no_caminho.all() == numeros_esperados.all():
+            return True
+        else:
+            return False
 
 if __name__ == "__main__":
     root = ctk.CTk()
@@ -414,7 +437,3 @@ if __name__ == "__main__":
     toolbar.update()
     
     root.mainloop()
-
-# star100.xyz.txt 0.36 123 123
-# star100.xyz.txt 100 0.01 10 100
-# star100.xyz.txt 100 0.08 100 100
