@@ -7,6 +7,8 @@ import matplotlib.animation as animation
 import numpy as np
 import subprocess
 import threading
+import os
+import platform
 
 class AnimatedGraphApp:
     def __init__(self, root):
@@ -247,7 +249,7 @@ class AnimatedGraphApp:
             coordenadas_z = np.zeros(tam, dtype=float)
             
             # Assumindo que você já tem uma função para abrir o dataset
-            coordenadas = self.open_dataset("datasets\\" + dataset_name)  # Altere o nome do arquivo conforme necessário
+            coordenadas = self.open_dataset(os.path.join("datasets",dataset_name))  # Altere o nome do arquivo conforme necessário
             
             for i in range(tam):
                 coordenadas_x[i] = coordenadas[best_path[i]][1]
@@ -287,16 +289,19 @@ class AnimatedGraphApp:
                     dataset_name = "hyg109399.xyz.txt"
                     dataset_size = "109399"
 
-            match algoritmo:
+            #Adiciona o sulfixo exe ao arquivo binário caso esteja rodando no Windows
+        bin_sulfix = ".exe" if platform.system() == "Windows" else ""
+
+        match algoritmo:
                 case "Nearest Neighbor (NN)":
-                    algoritmo = "c_scripts\\nn.exe"
+                    algoritmo = os.path.join("c_scripts","nn" + bin_sulfix)
                     process = subprocess.Popen([algoritmo, dataset_name, dataset_size], 
                                         stdout=subprocess.PIPE, 
                                         stderr=subprocess.PIPE, 
                                         text=True)
                     
                 case "Genetic Algorithm (GA)":
-                    algoritmo = "c_scripts\\ga.exe"
+                    algoritmo = os.path.join("c_scripts","ga" + bin_sulfix)
                     print(algoritmo + " " + dataset_name + " " + dataset_size + " " + self.mutacao_entry.get() + " " + self.populacao_entry.get() + " " + self.iteracoes_entry.get())
                     process = subprocess.Popen([algoritmo, dataset_name, dataset_size, self.mutacao_entry.get(), self.populacao_entry.get(), self.iteracoes_entry.get()], 
                                         stdout=subprocess.PIPE, 
@@ -304,7 +309,7 @@ class AnimatedGraphApp:
                                         text=True)
                     
                 case "Ant Colony Optimization (ACO)":
-                    algoritmo = "c_scripts\\aco.exe"
+                    algoritmo = os.path.join("c_scripts","aco" + bin_sulfix)
                     process = subprocess.Popen([algoritmo, dataset_name, dataset_size], 
                                 stdout=subprocess.PIPE, 
                                 stderr=subprocess.PIPE, 
@@ -338,15 +343,15 @@ class AnimatedGraphApp:
         
         match tam:
             case 101:
-                coordenadas = self.open_dataset("datasets\\star100.xyz.txt")
+                coordenadas = self.open_dataset(os.path.join("datasets","star100.xyz.txt"))
             case 1001:
-                coordenadas = self.open_dataset("datasets\\star1k.xyz.txt")
+                coordenadas = self.open_dataset(os.path.join("datasets","star1k.xyz.txt"))
             case 10001:
-                coordenadas = self.open_dataset("datasets\\star10k.xyz.txt")
+                coordenadas = self.open_dataset(os.path.join("datasets","star10k.xyz.txt"))
             case 37860:
-                coordenadas = self.open_dataset("datasets\\kj37859.xyz.txt")  
+                coordenadas = self.open_dataset(os.path.join("datasets","kj37859.xyz.txt")) 
             case 109400:
-                coordenadas = self.open_dataset("datasets\\hyg109399.xyz.txt")
+                coordenadas = self.open_dataset(os.path.join("datasets","hyg109399.xyz.txt"))
         
         for i in range(tam - 1):
             x1, y1, z1 = coordenadas[self.caminho[i]][1], coordenadas[self.caminho[i]][2], coordenadas[self.caminho[i]][3]
@@ -380,15 +385,15 @@ class AnimatedGraphApp:
 
         match tam:
             case 101:
-                coordenadas = self.open_dataset("datasets\\star100.xyz.txt")
+                coordenadas = self.open_dataset(os.path.join("datasets","star100.xyz.txt"))
             case 1001:
-                coordenadas = self.open_dataset("datasets\\star1k.xyz.txt")
+                coordenadas = self.open_dataset(os.path.join("datasets","star1k.xyz.txt"))
             case 10001:
-                coordenadas = self.open_dataset("datasets\\star10k.xyz.txt")
+                coordenadas = self.open_dataset(os.path.join("datasets","star10k.xyz.txt"))
             case 37860:
-                coordenadas = self.open_dataset("datasets\\kj37859.xyz.txt")  
+                coordenadas = self.open_dataset(os.path.join("datasets","kj37859.xyz.txt"))
             case 109400:
-                coordenadas = self.open_dataset("datasets\\hyg109399.xyz.txt")   
+                coordenadas = self.open_dataset(os.path.join("datasets","hyg109399.xyz.txt"))
 
         for i in range(tam):
             coordenadas_x[i] = coordenadas[caminho[i]][1]

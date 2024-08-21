@@ -405,7 +405,7 @@ int main(int argc, char *argv[])
     }
 
     char nomeArquivo[256];
-    snprintf(nomeArquivo, sizeof(nomeArquivo), "C:\\Users\\Getaruck\\Documents\\StarToursSolutionSim\\datasets\\%s", argv[1]);
+    snprintf(nomeArquivo, sizeof(nomeArquivo), "datasets/%s", argv[1]);
 
     int tamanho = atoi(argv[2]);
     if (tamanho <= 0)
