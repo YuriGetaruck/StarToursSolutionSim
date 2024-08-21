@@ -24,7 +24,7 @@ class AnimatedGraphApp:
         ctk.set_default_color_theme("dark-blue")  # Tema azul escuro
 
         # Definir o tamanho da janela para Full HD
-        self.root.geometry("1810x1080")
+        self.root.geometry("1600x868") #ratio 400:217
 
         # Configuração do layout
         self.frame_left = ctk.CTkFrame(self.root)
@@ -290,31 +290,31 @@ class AnimatedGraphApp:
                     dataset_size = "109399"
 
             #Adiciona o sulfixo exe ao arquivo binário caso esteja rodando no Windows
-        bin_sulfix = ".exe" if platform.system() == "Windows" else ""
+            bin_sulfix = ".exe" if platform.system() == "Windows" else ""
 
-        match algoritmo:
-                case "Nearest Neighbor (NN)":
-                    algoritmo = os.path.join("c_scripts","nn" + bin_sulfix)
-                    process = subprocess.Popen([algoritmo, dataset_name, dataset_size], 
-                                        stdout=subprocess.PIPE, 
-                                        stderr=subprocess.PIPE, 
-                                        text=True)
-                    
-                case "Genetic Algorithm (GA)":
-                    algoritmo = os.path.join("c_scripts","ga" + bin_sulfix)
-                    print(algoritmo + " " + dataset_name + " " + dataset_size + " " + self.mutacao_entry.get() + " " + self.populacao_entry.get() + " " + self.iteracoes_entry.get())
-                    process = subprocess.Popen([algoritmo, dataset_name, dataset_size, self.mutacao_entry.get(), self.populacao_entry.get(), self.iteracoes_entry.get()], 
-                                        stdout=subprocess.PIPE, 
-                                        stderr=subprocess.PIPE, 
-                                        text=True)
-                    
-                case "Ant Colony Optimization (ACO)":
-                    algoritmo = os.path.join("c_scripts","aco" + bin_sulfix)
-                    process = subprocess.Popen([algoritmo, dataset_name, dataset_size], 
-                                stdout=subprocess.PIPE, 
-                                stderr=subprocess.PIPE, 
-                                text=True)
-            
+            match algoritmo:
+                    case "Nearest Neighbor (NN)":
+                        algoritmo = os.path.join("c_scripts","nn" + bin_sulfix)
+                        process = subprocess.Popen([algoritmo, dataset_name, dataset_size], 
+                                            stdout=subprocess.PIPE, 
+                                            stderr=subprocess.PIPE, 
+                                            text=True)
+                        
+                    case "Genetic Algorithm (GA)":
+                        algoritmo = os.path.join("c_scripts","ga" + bin_sulfix)
+                        print(algoritmo + " " + dataset_name + " " + dataset_size + " " + self.mutacao_entry.get() + " " + self.populacao_entry.get() + " " + self.iteracoes_entry.get())
+                        process = subprocess.Popen([algoritmo, dataset_name, dataset_size, self.mutacao_entry.get(), self.populacao_entry.get(), self.iteracoes_entry.get()], 
+                                            stdout=subprocess.PIPE, 
+                                            stderr=subprocess.PIPE, 
+                                            text=True)
+                        
+                    case "Ant Colony Optimization (ACO)":
+                        algoritmo = os.path.join("c_scripts","aco" + bin_sulfix)
+                        process = subprocess.Popen([algoritmo, dataset_name, dataset_size], 
+                                    stdout=subprocess.PIPE, 
+                                    stderr=subprocess.PIPE, 
+                                    text=True)
+                
             print("algoritmo: " + algoritmo + " dataset: " + dataset_name + " dataset_size: " + dataset_size)
 
             # Espera até que o processo termine
