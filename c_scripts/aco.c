@@ -68,11 +68,15 @@ void ant_colony_optimization(double **points, int n_ants, int n_iterations, doub
 
     for (int iteration = 0; iteration < n_iterations; iteration++)
     {
+        if (iteration % 100 == 0)
+        {
+            printf("Iteração %d\n", iteration);
+        }
         // Para cada formiga
         for (int ant = 0; ant < n_ants; ant++)
         {
             int visited[N_POINTS] = {0};
-            int current_point = rand() % N_POINTS;
+            int current_point = 0; // Começa sempre no ponto 0
             visited[current_point] = 1;
             paths[ant][0] = current_point;
             double path_length = 0;
@@ -124,6 +128,12 @@ void ant_colony_optimization(double **points, int n_ants, int n_iterations, doub
                     }
                 }
 
+                // Seleciona o último ponto se nenhum for escolhido
+                if (next_point == -1)
+                {
+                    next_point = unvisited[n_unvisited - 1];
+                }
+
                 // Atualiza o caminho e a distância total
                 paths[ant][step] = next_point;
                 path_length += distance(points[current_point], points[next_point]);
@@ -131,8 +141,9 @@ void ant_colony_optimization(double **points, int n_ants, int n_iterations, doub
                 current_point = next_point;
             }
 
-            // Fecha o ciclo retornando ao ponto inicial
-            path_length += distance(points[paths[ant][N_POINTS - 1]], points[paths[ant][0]]);
+            // Fecha o ciclo retornando ao ponto 0
+            path_length += distance(points[current_point], points[0]);
+            paths[ant][N_POINTS - 1] = 0; // Retorna ao ponto 0
             path_lengths[ant] = path_length;
 
             // Verifica se este é o melhor caminho encontrado
@@ -204,7 +215,7 @@ int main()
     }
 
     // Executa a otimização
-    ant_colony_optimization(points, 10, 60, 1.0, 1.0, 0.3, 0.3);
+    ant_colony_optimization(points, 1000, 500, 1.0, 1.0, 0.3, 0.3);
 
     for (int i = 0; i < N_POINTS; i++)
     {
