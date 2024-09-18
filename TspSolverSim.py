@@ -19,12 +19,12 @@ class AnimatedGraphApp:
         self.distancia_o = self.get_distancia_otima()
         self.prox_caminho_o = self.get_prox_caminho_o()
         self.root = root
-        self.root.title("Gráfico 3D Animado com Customização")
+        self.root.title("Simulador StarTours - Yuri Getaruck")
         ctk.set_appearance_mode("dark")  # Modo escuro
         ctk.set_default_color_theme("dark-blue")  # Tema azul escuro
 
         # Definir o tamanho da janela para Full HD
-        self.root.geometry("1600x868") #ratio 400:217
+        self.root.geometry("1765x950") #ratio 400:217
 
         # Configuração do layout
         self.frame_left = ctk.CTkFrame(self.root)
@@ -63,7 +63,7 @@ class AnimatedGraphApp:
         self.mutacao_label.pack(pady=5)
         self.mutacao_slider = ctk.CTkSlider(self.frame_left, from_=0.00, to=1.00, number_of_steps=100, command=self.update_mutacao)
         self.mutacao_slider.pack(pady=5)
-        self.mutacao_var = ctk.StringVar(value="0.00")
+        self.mutacao_var = ctk.StringVar(value="0.08")
         self.mutacao_entry = ctk.CTkEntry(self.frame_left, textvariable=self.mutacao_var)
         self.mutacao_entry.pack(pady=5)
 
@@ -77,12 +77,58 @@ class AnimatedGraphApp:
         self.iteracoes_entry = ctk.CTkEntry(self.frame_left)
         self.iteracoes_entry.pack(pady=5)
 
+        # Hiperparâmetros para Algoritmo de Colônia de Formigas (ACO)
+        self.n_ants_label = ctk.CTkLabel(self.frame_left, text="Número de Formigas:")
+        self.n_ants_label.pack(pady=5)
+        self.n_ants_var = ctk.StringVar(value="50")  # Cria um StringVar com o valor padrão
+        self.n_ants_entry = ctk.CTkEntry(self.frame_left, textvariable=self.n_ants_var)
+        self.n_ants_entry.pack(pady=5)
+
+        self.n_iterations_label = ctk.CTkLabel(self.frame_left, text="Número de Iterações:")
+        self.n_iterations_label.pack(pady=5)
+        self.n_iterations_var = ctk.StringVar(value="200")  # Cria um StringVar com o valor padrão
+        self.n_iterations_entry = ctk.CTkEntry(self.frame_left, textvariable=self.n_iterations_var)
+        self.n_iterations_entry.pack(pady=5)
+
+        self.alpha_label = ctk.CTkLabel(self.frame_left, text="Valor de Alpha:")
+        self.alpha_label.pack(pady=5)
+        self.alpha_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=1.0, number_of_steps=100, command=self.update_alpha)
+        self.alpha_slider.pack(pady=5)
+        self.alpha_var = ctk.StringVar(value="1.00")
+        self.alpha_entry = ctk.CTkEntry(self.frame_left, textvariable=self.alpha_var)
+        self.alpha_entry.pack(pady=5)
+
+        self.beta_label = ctk.CTkLabel(self.frame_left, text="Valor de Beta:")
+        self.beta_label.pack(pady=5)
+        self.beta_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=1.0, number_of_steps=100, command=self.update_beta)
+        self.beta_slider.pack(pady=5)
+        self.beta_var = ctk.StringVar(value="1.00")
+        self.beta_entry = ctk.CTkEntry(self.frame_left, textvariable=self.beta_var)
+        self.beta_entry.pack(pady=5)
+
+        self.evaporation_label = ctk.CTkLabel(self.frame_left, text="Taxa de Evaporação:")
+        self.evaporation_label.pack(pady=5)
+        self.evaporation_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=1.0, number_of_steps=100, command=self.update_evaporation)
+        self.evaporation_slider.pack(pady=5)
+        self.evaporation_var = ctk.StringVar(value="0.3")
+        self.evaporation_entry = ctk.CTkEntry(self.frame_left, textvariable=self.evaporation_var)
+        self.evaporation_entry.pack(pady=5)
+
+        self.q_label = ctk.CTkLabel(self.frame_left, text="Valor de Q:")
+        self.q_label.pack(pady=5)
+        self.q_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=1.0, number_of_steps=100, command=self.update_q)
+        self.q_slider.pack(pady=5)
+        self.q_var = ctk.StringVar(value="0.3")
+        self.q_entry = ctk.CTkEntry(self.frame_left, textvariable=self.q_var)
+        self.q_entry.pack(pady=5)
+
         # Botão para plotar o melhor caminho
         self.plot_best_path_checkbox = ctk.CTkCheckBox(self.frame_left, text="Plotar Melhor Caminho", command=self.plot_best_path_checkbox_command)
         self.plot_best_path_checkbox.pack(pady=20)
         
-        # Inicialmente, ocultar os parâmetros de GA
+        # Inicialmente, ocultar os parâmetros
         self.toggle_ga_params(False)
+        self.toggle_aco_params(False)
         
         # Botao Run
         self.run_button = ctk.CTkButton(self.frame_left, text="RUN", command=self.run_algoritmo)
@@ -180,8 +226,11 @@ class AnimatedGraphApp:
             print("Exibindo parâmetros de GA")  # Verificação de debug
             self.toggle_ga_params(True)
         else:
-            print("Ocultando parâmetros de GA")  # Verificação de debug
             self.toggle_ga_params(False)
+        if selected_algo == "Ant Colony Optimization (ACO)":
+            self.toggle_aco_params(True)
+        else:
+            self.toggle_aco_params(False)
 
     def toggle_ga_params(self, show):
         if show:
@@ -200,9 +249,57 @@ class AnimatedGraphApp:
             self.populacao_entry.pack_forget()
             self.iteracoes_label.pack_forget()
             self.iteracoes_entry.pack_forget()
-    
+
+    def toggle_aco_params(self, show):
+        if show:
+            self.n_ants_label.pack(pady=5)
+            self.n_ants_entry.pack(pady=5)
+            self.n_iterations_label.pack(pady=5)
+            self.n_iterations_entry.pack(pady=5)
+            self.alpha_label.pack(pady=5)
+            self.alpha_slider.pack(pady=5)
+            self.alpha_entry.pack(pady=5)
+            self.beta_label.pack(pady=5)
+            self.beta_slider.pack(pady=5)
+            self.beta_entry.pack(pady=5)
+            self.evaporation_label.pack(pady=5)
+            self.evaporation_slider.pack(pady=5)
+            self.evaporation_entry.pack(pady=5)
+            self.q_label.pack(pady=5)
+            self.q_slider.pack(pady=5)
+            self.q_entry.pack(pady=5)
+        else:
+            self.n_ants_label.pack_forget()
+            self.n_ants_entry.pack_forget()
+            self.n_iterations_label.pack_forget()
+            self.n_iterations_entry.pack_forget()
+            self.alpha_label.pack_forget()
+            self.alpha_slider.pack_forget()
+            self.alpha_entry.pack_forget()
+            self.beta_label.pack_forget()
+            self.beta_slider.pack_forget()
+            self.beta_entry.pack_forget()
+            self.evaporation_label.pack_forget()
+            self.evaporation_slider.pack_forget()
+            self.evaporation_entry.pack_forget()
+            self.q_label.pack_forget()
+            self.q_slider.pack_forget()
+            self.q_entry.pack_forget()
+        
     def update_mutacao(self, value):
         self.mutacao_var.set(f"{float(value):.2f}")
+
+    def update_alpha(self, value):
+        self.alpha_var.set(f"{float(value):.2f}")
+
+    def update_beta(self, value):
+        self.beta_var.set(f"{float(value):.2f}")
+    
+    def update_evaporation(self, value):
+        self.evaporation_var.set(f"{float(value):.2f}")
+
+    def update_q(self, value):
+        self.q_var.set(f"{float(value):.2f}")
 
     def plot_best_path_checkbox_command(self):
         if(self.plot_best_path_checkbox.get() == 1):
@@ -310,7 +407,7 @@ class AnimatedGraphApp:
                         
                     case "Ant Colony Optimization (ACO)":
                         algoritmo = os.path.join("c_scripts","aco" + bin_sulfix)
-                        process = subprocess.Popen([algoritmo, dataset_name, dataset_size], 
+                        process = subprocess.Popen([algoritmo, dataset_name, dataset_size, self.n_ants_entry.get(), self.n_iterations_entry.get(), self.alpha_entry.get(), self.beta_entry.get(), self.evaporation_entry.get(), self.q_entry.get()], 
                                     stdout=subprocess.PIPE, 
                                     stderr=subprocess.PIPE, 
                                     text=True)
@@ -320,14 +417,15 @@ class AnimatedGraphApp:
             # Espera até que o processo termine
             stdout, stderr = process.communicate()
 
-            # print(stdout)
-            # print(stderr)
+            print(stdout)
+            print(stderr)
             
             numeros_strings = stdout[1:-1].split(', ')
             caminho_resutado = [int(num) for num in numeros_strings]
 
             # Atualizar o caminho com o resultado do algoritmo
             self.caminho = caminho_resutado
+            print(self.caminho)
             print("Caminho válido: " + str(self.valida_caminho()))
             
             # Atualizar o gráfico na interface
@@ -425,6 +523,7 @@ class AnimatedGraphApp:
             return False
         
         # Cria um conjunto dos números esperados
+        print(len(self.caminho))
         numeros_esperados = np.arange(len(self.caminho) - 1)
         numeros_esperados = np.insert(numeros_esperados, 0, 0)
         
