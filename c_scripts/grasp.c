@@ -1,10 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <math.h> // Para utilizar as funções sqrt() e pow()
-#include <time.h> // Para gerar números aleatórios
-
-#define ALPHA 0.3 // Parâmetro que controla a aleatoriedade da lista restrita de candidatos (0.0 é totalmente guloso, 1.0 é totalmente aleatório)
+#include <math.h>
+#include <string.h>
+#include <time.h>
 
 // Estrutura para representar uma coordenada
 typedef struct
@@ -18,10 +17,66 @@ typedef struct
 // Função para calcular a distância entre dois pontos em 3D
 float calcularDistancia(CoordenadaEstrela ponto1, CoordenadaEstrela ponto2)
 {
-    return sqrt(pow(ponto2.x - ponto1.x, 2) + pow(ponto2.y - ponto1.y, 2) + pow(ponto2.z - ponto1.z, 2));
+    return sqrtf(powf(ponto2.x - ponto1.x, 2) +
+                 powf(ponto2.y - ponto1.y, 2) +
+                 powf(ponto2.z - ponto1.z, 2));
 }
 
-// Função para extrair coordenadas
+// Função para criar a matriz de distâncias
+float **criarMatrizDistancias(CoordenadaEstrela *coordenadas, int tamanho)
+{
+    float **matrizDistancias = (float **)malloc(tamanho * sizeof(float *));
+    if (matrizDistancias == NULL)
+    {
+        printf("Erro ao alocar memória para matrizDistancias\n");
+        exit(EXIT_FAILURE);
+    }
+    for (int i = 0; i < tamanho; i++)
+    {
+        matrizDistancias[i] = (float *)malloc(tamanho * sizeof(float));
+        if (matrizDistancias[i] == NULL)
+        {
+            printf("Erro ao alocar memória para matrizDistancias\n");
+            exit(EXIT_FAILURE);
+        }
+        for (int j = 0; j < tamanho; j++)
+        {
+            if (i == j)
+            {
+                matrizDistancias[i][j] = 0.0f;
+            }
+            else
+            {
+                matrizDistancias[i][j] = calcularDistancia(coordenadas[i], coordenadas[j]);
+            }
+        }
+    }
+    return matrizDistancias;
+}
+
+// Função para liberar a matriz de distâncias
+void liberarMatrizDistancias(float **matrizDistancias, int tamanho)
+{
+    for (int i = 0; i < tamanho; i++)
+    {
+        free(matrizDistancias[i]);
+    }
+    free(matrizDistancias);
+}
+
+// Função para calcular a distância total de um caminho
+float calcularDistanciaTotal(int *caminho, float **matrizDistancias, int tamanho)
+{
+    float distanciaTotal = 0.0f;
+    for (int i = 0; i < tamanho - 1; i++)
+    {
+        distanciaTotal += matrizDistancias[caminho[i]][caminho[i + 1]];
+    }
+    distanciaTotal += matrizDistancias[caminho[tamanho - 1]][caminho[0]]; // Retorno ao início
+    return distanciaTotal;
+}
+
+// Função para ler coordenadas do arquivo
 CoordenadaEstrela *lerCoordenadas(const char *nomeArquivo, int *tamanho)
 {
     FILE *arquivo = fopen(nomeArquivo, "r");
@@ -57,7 +112,7 @@ CoordenadaEstrela *lerCoordenadas(const char *nomeArquivo, int *tamanho)
             fprintf(stderr, "Erro ao ler coordenadas do arquivo\n");
             exit(EXIT_FAILURE);
         }
-        coordenadas[i].id = i + 1;
+        coordenadas[i].id = i;
     }
 
     fclose(arquivo);
@@ -69,193 +124,228 @@ CoordenadaEstrela *lerCoordenadas(const char *nomeArquivo, int *tamanho)
     return coordenadas;
 }
 
-// Função para criar a matriz de distâncias
-float **criarMatrizDistancias(CoordenadaEstrela *coordenadas, int tamanho)
+// Função para construir uma solução inicial usando GRASP (RCL)
+int *construirSolucao(float **matrizDistancias, int tamanho, float alpha)
 {
-    float **matrizDistancias = (float **)malloc(tamanho * sizeof(float *));
-    for (int i = 0; i < tamanho; i++)
+    int *solucao = (int *)malloc(tamanho * sizeof(int));
+    if (solucao == NULL)
     {
-        matrizDistancias[i] = (float *)malloc(tamanho * sizeof(float));
-        for (int j = 0; j < tamanho; j++)
-        {
-            matrizDistancias[i][j] = calcularDistancia(coordenadas[i], coordenadas[j]);
-        }
-    }
-    return matrizDistancias;
-}
-
-// Função para liberar a matriz de distâncias
-void liberarMatrizDistancias(float **matrizDistancias, int tamanho)
-{
-    for (int i = 0; i < tamanho; i++)
-    {
-        free(matrizDistancias[i]);
-    }
-    free(matrizDistancias);
-}
-
-// Função para encontrar o próximo ponto mais próximo não visitado, com base em uma lista restrita de candidatos (RCL)
-int encontrarProximoPontoRCL(float **matrizDistancias, bool *visitado, int pontoAtual, int tamanho)
-{
-    int candidatos[tamanho];
-    int numCandidatos = 0;
-    float distMin = INFINITY, distMax = 0;
-
-    // Encontrar a menor e maior distância dos pontos não visitados
-    for (int i = 0; i < tamanho; i++)
-    {
-        if (!visitado[i] && i != pontoAtual)
-        {
-            float dist = matrizDistancias[pontoAtual][i];
-            if (dist < distMin)
-                distMin = dist;
-            if (dist > distMax)
-                distMax = dist;
-        }
+        perror("Erro ao alocar memória para solução");
+        exit(EXIT_FAILURE);
     }
 
-    // Definir limite de inclusão na lista restrita de candidatos (RCL)
-    float limite = distMin + ALPHA * (distMax - distMin);
-
-    // Construir a lista restrita de candidatos (RCL)
-    for (int i = 0; i < tamanho; i++)
-    {
-        if (!visitado[i] && i != pontoAtual)
-        {
-            float dist = matrizDistancias[pontoAtual][i];
-            if (dist <= limite)
-            {
-                candidatos[numCandidatos++] = i;
-            }
-        }
-    }
-
-    // Escolher um ponto aleatório da lista restrita
-    int escolhido = candidatos[rand() % numCandidatos];
-    return escolhido;
-}
-
-// Função para calcular a distância total de uma solução
-float calcularDistanciaTotal(int *caminho, float **matrizDistancias, int tamanho)
-{
-    float distanciaTotal = 0.0;
-    for (int i = 0; i < tamanho - 1; i++)
-    {
-        distanciaTotal += matrizDistancias[caminho[i]][caminho[i + 1]];
-    }
-    // Fechar o ciclo
-    distanciaTotal += matrizDistancias[caminho[tamanho - 1]][caminho[0]];
-    return distanciaTotal;
-}
-
-// Fase construtiva do GRASP
-void faseConstrutivaGRASP(CoordenadaEstrela *coordenadas, float **matrizDistancias, int tamanho, int *caminho, float *distanciaTotal)
-{
     bool *visitado = (bool *)calloc(tamanho, sizeof(bool));
-    int pontoAtual = rand() % tamanho; // Começa em um ponto aleatório
-    visitado[pontoAtual] = true;
-    caminho[0] = pontoAtual;
+    if (visitado == NULL)
+    {
+        perror("Erro ao alocar memória para visitado");
+        exit(EXIT_FAILURE);
+    }
+
+    int current = rand() % tamanho; // Ponto de partida aleatório
+    solucao[0] = current;
+    visitado[current] = true;
 
     for (int i = 1; i < tamanho; i++)
     {
-        int proximoPonto = encontrarProximoPontoRCL(matrizDistancias, visitado, pontoAtual, tamanho);
-        caminho[i] = proximoPonto;
-        visitado[proximoPonto] = true;
-        pontoAtual = proximoPonto;
-    }
-
-    free(visitado);
-
-    *distanciaTotal = calcularDistanciaTotal(caminho, matrizDistancias, tamanho);
-}
-
-// Função de busca local (2-opt)
-void buscaLocal2Opt(int *caminho, float **matrizDistancias, int tamanho, float *distanciaTotal)
-{
-    bool melhorou = true;
-    while (melhorou)
-    {
-        melhorou = false;
-        for (int i = 0; i < tamanho - 1; i++)
+        // Criar a lista de candidatos não visitados
+        float minDist = INFINITY, maxDist = 0.0f;
+        for (int j = 0; j < tamanho; j++)
         {
-            for (int j = i + 1; j < tamanho; j++)
+            if (!visitado[j])
             {
-                // Testa a troca de dois segmentos
-                int novoCaminho[tamanho];
-                for (int k = 0; k < i; k++)
-                    novoCaminho[k] = caminho[k];
-                for (int k = i, l = j; k <= j; k++, l--)
-                    novoCaminho[k] = caminho[l];
-                for (int k = j + 1; k < tamanho; k++)
-                    novoCaminho[k] = caminho[k];
-
-                float novaDistancia = calcularDistanciaTotal(novoCaminho, matrizDistancias, tamanho);
-                if (novaDistancia < *distanciaTotal)
+                if (matrizDistancias[current][j] < minDist)
                 {
-                    // Atualiza o caminho e a distância
-                    for (int k = 0; k < tamanho; k++)
-                        caminho[k] = novoCaminho[k];
-                    *distanciaTotal = novaDistancia;
-                    melhorou = true;
+                    minDist = matrizDistancias[current][j];
+                }
+                if (matrizDistancias[current][j] > maxDist)
+                {
+                    maxDist = matrizDistancias[current][j];
                 }
             }
         }
+
+        // Definir o limiar para RCL
+        float limite = minDist + alpha * (maxDist - minDist);
+
+        // Construir RCL
+        int *rcl = (int *)malloc(tamanho * sizeof(int));
+        if (rcl == NULL)
+        {
+            perror("Erro ao alocar memória para RCL");
+            exit(EXIT_FAILURE);
+        }
+        int rclSize = 0;
+        for (int j = 0; j < tamanho; j++)
+        {
+            if (!visitado[j] && matrizDistancias[current][j] <= limite)
+            {
+                rcl[rclSize++] = j;
+            }
+        }
+
+        if (rclSize == 0)
+        { // Caso não haja candidatos na RCL, considerar todos não visitados
+            for (int j = 0; j < tamanho; j++)
+            {
+                if (!visitado[j])
+                {
+                    rcl[rclSize++] = j;
+                }
+            }
+        }
+
+        // Selecionar aleatoriamente um candidato da RCL
+        int selecionado = rcl[rand() % rclSize];
+        solucao[i] = selecionado;
+        visitado[selecionado] = true;
+        current = selecionado;
+
+        free(rcl);
     }
+
+    free(visitado);
+    return solucao;
+}
+
+// Função para realizar a troca 2-Opt
+bool aplicar2Opt(int *solucao, float **matrizDistancias, int tamanho, float *distanciaTotal)
+{
+    bool melhorou = false;
+    for (int i = 1; i < tamanho - 1; i++)
+    {
+        for (int j = i + 1; j < tamanho; j++)
+        {
+            // Cálculo das distâncias antes da troca
+            float d1 = matrizDistancias[solucao[i - 1]][solucao[i]] + matrizDistancias[solucao[j]][solucao[(j + 1) % tamanho]];
+            // Cálculo das distâncias depois da troca
+            float d2 = matrizDistancias[solucao[i - 1]][solucao[j]] + matrizDistancias[solucao[i]][solucao[(j + 1) % tamanho]];
+            if (d2 < d1)
+            {
+                // Realizar a troca
+                for (int k = 0; k < (j - i + 1) / 2; k++)
+                {
+                    int temp = solucao[i + k];
+                    solucao[i + k] = solucao[j - k];
+                    solucao[j - k] = temp;
+                }
+                *distanciaTotal = *distanciaTotal - d1 + d2;
+                melhorou = true;
+            }
+        }
+    }
+    return melhorou;
+}
+
+// Função de busca local 2-Opt
+void buscaLocal2Opt(int *solucao, float **matrizDistancias, int tamanho, float *distanciaTotal)
+{
+    bool melhorou;
+    do
+    {
+        melhorou = aplicar2Opt(solucao, matrizDistancias, tamanho, distanciaTotal);
+    } while (melhorou);
+}
+
+// Função para copiar uma solução
+int *copiarSolucao(int *solucao, int tamanho)
+{
+    int *copia = (int *)malloc(tamanho * sizeof(int));
+    if (copia == NULL)
+    {
+        perror("Erro ao alocar memória para cópia da solução");
+        exit(EXIT_FAILURE);
+    }
+    memcpy(copia, solucao, tamanho * sizeof(int));
+    return copia;
+}
+
+// Função para imprimir a solução
+void imprimirSolucao(int *solucao, int tamanho, float distanciaTotal)
+{
+    printf("[");
+    for (int i = 0; i < tamanho + 1; i++)
+    {
+        if (i < tamanho)
+        {
+            printf("%d, ", solucao[i]);
+        }
+    }
+    printf("%d]", solucao[0]); // Retorno ao início
 }
 
 int main(int argc, char *argv[])
 {
-    if (argc < 2)
+    // Inicialização da semente para números aleatórios
+    srand(time(NULL));
+
+    // Verifica se os argumentos necessários foram passados
+    if (argc < 4)
     {
-        fprintf(stderr, "Uso: %s <nomeArquivo>\n", argv[0]);
         return EXIT_FAILURE;
     }
-
-    srand(time(NULL)); // Inicializa o gerador de números aleatórios
 
     char nomeArquivo[256];
     snprintf(nomeArquivo, sizeof(nomeArquivo), "datasets/%s", argv[1]);
 
-    int tamanho = atoi(argv[2]);
-    CoordenadaEstrela *coordenadas = (CoordenadaEstrela *)malloc(tamanho * sizeof(CoordenadaEstrela));
+    int numIteracoes = atoi(argv[2]);
+    if (numIteracoes <= 0)
+    {
+        fprintf(stderr, "Número de iterações inválido: %s\n", argv[2]);
+        return EXIT_FAILURE;
+    }
 
-    coordenadas = lerCoordenadas(nomeArquivo, &tamanho);
+    float alpha = atof(argv[3]);
+    if (alpha < 0.0f || alpha > 1.0f)
+    {
+        fprintf(stderr, "Alpha inválido: %f. Deve estar entre 0 e 1.\n", alpha);
+        return EXIT_FAILURE;
+    }
+
+    int tamanho;
+    CoordenadaEstrela *coordenadas = lerCoordenadas(nomeArquivo, &tamanho);
+
     float **matrizDistancias = criarMatrizDistancias(coordenadas, tamanho);
 
-    int melhorCaminho[tamanho];
+    // Variáveis para armazenar a melhor solução
+    int *melhorSolucao = NULL;
     float melhorDistancia = INFINITY;
 
-    for (int iteracao = 0; iteracao < 100; iteracao++)
+    // GRASP Iterativo
+    for (int iter = 0; iter < numIteracoes; iter++)
     {
-        int caminho[tamanho];
-        float distanciaTotal;
+        // Construção da solução inicial
+        int *solucao = construirSolucao(matrizDistancias, tamanho, alpha);
 
-        // Fase construtiva
-        faseConstrutivaGRASP(coordenadas, matrizDistancias, tamanho, caminho, &distanciaTotal);
+        // Cálculo da distância total
+        float distancia = calcularDistanciaTotal(solucao, matrizDistancias, tamanho);
 
-        // Busca local
-        buscaLocal2Opt(caminho, matrizDistancias, tamanho, &distanciaTotal);
+        // Busca Local
+        buscaLocal2Opt(solucao, matrizDistancias, tamanho, &distancia);
 
-        // Atualiza o melhor caminho
-        if (distanciaTotal < melhorDistancia)
+        // Atualização da melhor solução
+        if (distancia < melhorDistancia)
         {
-            melhorDistancia = distanciaTotal;
-            for (int i = 0; i < tamanho; i++)
+            if (melhorSolucao != NULL)
             {
-                melhorCaminho[i] = caminho[i];
+                free(melhorSolucao);
             }
+            melhorSolucao = copiarSolucao(solucao, tamanho);
+            melhorDistancia = distancia;
         }
+
+        free(solucao);
     }
 
-    printf("Melhor caminho encontrado: [");
-    for (int i = 0; i < tamanho; i++)
+    // Imprimir a melhor solução encontrada
+    if (melhorSolucao != NULL)
     {
-        if (i < tamanho - 1)
-            printf("%d, ", melhorCaminho[i]);
-        else
-            printf("%d", melhorCaminho[i]);
+        imprimirSolucao(melhorSolucao, tamanho, melhorDistancia);
+        free(melhorSolucao);
     }
-    printf("]\nDistância total: %.2f\n", melhorDistancia);
+    else
+    {
+        printf("Nenhuma solução encontrada.\n");
+    }
 
     liberarMatrizDistancias(matrizDistancias, tamanho);
     free(coordenadas);

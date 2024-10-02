@@ -23,9 +23,6 @@ FILE *create_log_file()
     char filename[50];
     char directory[20] = "logs";
 
-    // Criar o nome do arquivo com timestamp
-    strftime(filename, sizeof(filename), "c_scripts/logs/log_aco_%Y%m%d_%H%M%S.txt", tm_info);
-
     // Criar e abrir o arquivo
     FILE *file = fopen("c_scripts/logs/log_aco", "w");
     if (file == NULL)

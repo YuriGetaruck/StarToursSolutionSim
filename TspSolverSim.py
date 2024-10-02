@@ -49,7 +49,7 @@ class AnimatedGraphApp:
         self.algoritmo_label = ctk.CTkLabel(self.frame_left, text="Algoritmo:")
         self.algoritmo_label.pack(pady=5)
         self.algoritmo_var = ctk.StringVar(value="Nearest Neighbor (NN)")
-        self.algoritmo_select = ctk.CTkComboBox(self.frame_left, variable=self.algoritmo_var, values=["Nearest Neighbor (NN)", "Genetic Algorithm (GA)", "Ant Colony Optimization (ACO)"], command=self.on_algoritmo_select)
+        self.algoritmo_select = ctk.CTkComboBox(self.frame_left, variable=self.algoritmo_var, values=["Nearest Neighbor (NN)", "Genetic Algorithm (GA)", "Ant Colony Optimization (ACO)", "Greedy Randomized Adaptive Search Procedure (GRASP)"], command=self.on_algoritmo_select)
         self.algoritmo_select.pack(pady=5)
 
         self.dataset_label = ctk.CTkLabel(self.frame_left, text="Dataset:")
@@ -122,6 +122,21 @@ class AnimatedGraphApp:
         self.q_entry = ctk.CTkEntry(self.frame_left, textvariable=self.q_var)
         self.q_entry.pack(pady=5)
 
+        # Hiperparâmetros para GRASP
+        self.grasp_alpha_label = ctk.CTkLabel(self.frame_left, text="Iterações:")
+        self.grasp_alpha_label.pack(pady=5)
+        self.grasp_alpha_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=1.0, number_of_steps=100, command=self.update_beta)
+        self.grasp_alpha_slider.pack(pady=5)
+        self.grasp_alpha_var = ctk.StringVar(value="0.10")
+        self.grasp_alpha_entry = ctk.CTkEntry(self.frame_left, textvariable=self.grasp_alpha_var)
+        self.grasp_alpha_entry.pack(pady=5)
+
+        self.grasp_iterations_label = ctk.CTkLabel(self.frame_left, text="Número de Iterações:")
+        self.grasp_iterations_label.pack(pady=5)
+        self.grasp_iterations_var = ctk.StringVar(value="1000")  # Cria um StringVar com o valor padrão
+        self.grasp_iterations_entry = ctk.CTkEntry(self.frame_left, textvariable=self.grasp_iterations_var)
+        self.grasp_iterations_entry.pack(pady=5)
+
         # Botão para plotar o melhor caminho
         self.plot_best_path_checkbox = ctk.CTkCheckBox(self.frame_left, text="Plotar Melhor Caminho", command=self.plot_best_path_checkbox_command)
         self.plot_best_path_checkbox.pack(pady=20)
@@ -129,6 +144,7 @@ class AnimatedGraphApp:
         # Inicialmente, ocultar os parâmetros
         self.toggle_ga_params(False)
         self.toggle_aco_params(False)
+        self.toggle_grasp_params(False)
         
         # Botao Run
         self.run_button = ctk.CTkButton(self.frame_left, text="RUN", command=self.run_algoritmo)
@@ -223,7 +239,6 @@ class AnimatedGraphApp:
         selected_algo = self.algoritmo_var.get()
         print(f"Algoritmo selecionado: {selected_algo}")  # Verificação de debug
         if selected_algo == "Genetic Algorithm (GA)":
-            print("Exibindo parâmetros de GA")  # Verificação de debug
             self.toggle_ga_params(True)
         else:
             self.toggle_ga_params(False)
@@ -231,6 +246,11 @@ class AnimatedGraphApp:
             self.toggle_aco_params(True)
         else:
             self.toggle_aco_params(False)
+        if selected_algo == "Greedy Randomized Adaptive Search Procedure (GRASP)":
+            self.toggle_grasp_params(True)
+        else:
+            self.toggle_grasp_params(False)
+        
 
     def toggle_ga_params(self, show):
         if show:
@@ -249,6 +269,20 @@ class AnimatedGraphApp:
             self.populacao_entry.pack_forget()
             self.iteracoes_label.pack_forget()
             self.iteracoes_entry.pack_forget()
+
+    def toggle_grasp_params(self, show):
+        if show:
+            self.grasp_alpha_label.pack(pady=5)
+            self.grasp_alpha_slider.pack(pady=5)
+            self.grasp_alpha_entry.pack(pady=5)
+            self.grasp_iterations_label.pack(pady=5)
+            self.grasp_iterations_entry.pack(pady=5)
+        else:
+            self.grasp_alpha_label.pack_forget()
+            self.grasp_alpha_slider.pack_forget()
+            self.grasp_alpha_entry.pack_forget()
+            self.grasp_iterations_label.pack_forget()
+            self.grasp_iterations_entry.pack_forget()
 
     def toggle_aco_params(self, show):
         if show:
@@ -411,6 +445,13 @@ class AnimatedGraphApp:
                                     stdout=subprocess.PIPE, 
                                     stderr=subprocess.PIPE, 
                                     text=True)
+                        
+                    case "Greedy Randomized Adaptive Search Procedure (GRASP)":
+                        algoritmo = os.path.join("c_scripts","grasp" + bin_sulfix)
+                        process = subprocess.Popen([algoritmo, dataset_name, self.grasp_iterations_var.get(), self.grasp_alpha_var.get()],
+                                    stdout=subprocess.PIPE, 
+                                    stderr=subprocess.PIPE, 
+                                    text=True)
                 
             print("algoritmo: " + algoritmo + " dataset: " + dataset_name + " dataset_size: " + dataset_size)
 
@@ -518,7 +559,16 @@ class AnimatedGraphApp:
         return np.array(matriz)
     
     def valida_caminho(self):
+
         # Verifica se o primeiro e o último elemento são 0
+        if self.caminho[0] != 0 or self.caminho[-1] != 0:
+            # Encontrar a posição do valor 0 no caminho
+            pos_zero = self.caminho.index(0)
+
+            # Ajustar o caminho para iniciar e terminar em 0, mantendo a ordem
+            self.caminho = self.caminho[pos_zero:] + self.caminho[1:pos_zero] + [0]
+            print(self.caminho)
+
         if self.caminho[0] != 0 or self.caminho[-1] != 0:
             return False
         
