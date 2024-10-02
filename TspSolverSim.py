@@ -123,9 +123,9 @@ class AnimatedGraphApp:
         self.q_entry.pack(pady=5)
 
         # Hiperparâmetros para GRASP
-        self.grasp_alpha_label = ctk.CTkLabel(self.frame_left, text="Iterações:")
+        self.grasp_alpha_label = ctk.CTkLabel(self.frame_left, text="Alpha:")
         self.grasp_alpha_label.pack(pady=5)
-        self.grasp_alpha_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=1.0, number_of_steps=100, command=self.update_beta)
+        self.grasp_alpha_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=1.0, number_of_steps=100, command=self.update_grasp_alpha)
         self.grasp_alpha_slider.pack(pady=5)
         self.grasp_alpha_var = ctk.StringVar(value="0.10")
         self.grasp_alpha_entry = ctk.CTkEntry(self.frame_left, textvariable=self.grasp_alpha_var)
@@ -325,6 +325,9 @@ class AnimatedGraphApp:
 
     def update_alpha(self, value):
         self.alpha_var.set(f"{float(value):.2f}")
+
+    def update_grasp_alpha(self, value):
+        self.grasp_alpha_var.set(f"{float(value):.2f}")
 
     def update_beta(self, value):
         self.beta_var.set(f"{float(value):.2f}")
