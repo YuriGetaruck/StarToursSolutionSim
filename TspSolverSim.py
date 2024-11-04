@@ -9,6 +9,8 @@ import subprocess
 import threading
 import os
 import platform
+import time
+import re
 
 class AnimatedGraphApp:
     def __init__(self, root):
@@ -18,13 +20,14 @@ class AnimatedGraphApp:
         self.distancia_caminho = self.calcula_distancia_caminho()
         self.distancia_o = self.get_distancia_otima()
         self.prox_caminho_o = self.get_prox_caminho_o()
+        self.tempo_execucao = 0;
         self.root = root
         self.root.title("Simulador StarTours - Yuri Getaruck")
         ctk.set_appearance_mode("dark")  # Modo escuro
         ctk.set_default_color_theme("dark-blue")  # Tema azul escuro
 
         # Definir o tamanho da janela para Full HD
-        self.root.geometry("1765x950") #ratio 400:217
+        self.root.geometry("1600x990") #ratio 400:217
 
         # Configuração do layout
         self.frame_left = ctk.CTkFrame(self.root)
@@ -154,11 +157,11 @@ class AnimatedGraphApp:
         self.result_label = ctk.CTkLabel(self.frame_right, text="Resultados")
         self.result_label.pack(pady=5)
         
-        self.caminho_label = ctk.CTkLabel(self.frame_right, text="Caminho:")
-        self.caminho_label.pack(pady=5)
-        self.caminho_text = ctk.CTkTextbox(self.frame_right, height=300, width=400)
-        self.caminho_text.pack(pady=5)
-        self.caminho_text.insert(ctk.END, self.caminho)
+        # self.caminho_label = ctk.CTkLabel(self.frame_right, text="Caminho:")
+        # self.caminho_label.pack(pady=5)
+        # self.caminho_text = ctk.CTkTextbox(self.frame_right, height=300, width=400)
+        # self.caminho_text.pack(pady=5)
+        # self.caminho_text.insert(ctk.END, self.caminho)
         
         self.distancia_label = ctk.CTkLabel(self.frame_right, text="Distância Total:")
         self.distancia_label.pack(pady=5)
@@ -177,6 +180,17 @@ class AnimatedGraphApp:
         self.proximidade_caminho_o_text = ctk.CTkTextbox(self.frame_right, height=10, width=150)
         self.proximidade_caminho_o_text.pack(pady=5)
         self.proximidade_caminho_o_text.insert(ctk.END, f"{self.prox_caminho_o:.2f} %")
+
+        # Elementos da interface
+        self.progress_label = ctk.CTkLabel(self.frame_right, text="Progresso do Algoritmo: ", font=("Arial", 16))
+        self.progress_label.pack(pady=10)
+
+        self.progress_bar = ctk.CTkProgressBar(self.frame_right, width=300)
+        self.progress_bar.pack(pady=20)
+        self.progress_bar.set(0)
+
+        self.progress_percentage = ctk.CTkLabel(self.frame_right, text="0%", font=("Arial", 14))
+        self.progress_percentage.pack(pady=10)
         
         # Configuração do gráfico 3D
         self.fig = plt.figure()
@@ -206,8 +220,8 @@ class AnimatedGraphApp:
         # Atualizar o canvas com o novo gráfico
         self.canvas.draw()
 
-        self.caminho_text.delete("1.0", ctk.END)
-        self.caminho_text.insert(ctk.END, self.caminho)
+        # self.caminho_text.delete("1.0", ctk.END)
+        # self.caminho_text.insert(ctk.END, self.caminho)
         self.distancia_caminho = self.calcula_distancia_caminho()
         self.distancia_text.delete("1.0", ctk.END)
         self.distancia_text.insert(ctk.END, f"{self.distancia_caminho:.2f}")
@@ -397,10 +411,34 @@ class AnimatedGraphApp:
         else:
             self.update_graph()
 
+    def atualizar_barra_progresso(self, algoritmo, iteracoes_totais):
+        def atualizar_barra_progresso_sub_process(algoritmo, iteracoes_totais):
+            iteracao_atual = 0
+            while iteracao_atual < int(iteracoes_totais):
+                with open("c_scripts\\logs\\log_" + algoritmo, "r") as file:
+                    linhas = file.readlines()
+                
+                # Extrair a última iteração do log
+                for linha in reversed(linhas):
+                    match = re.search(r"Iteracao: (\d+)", linha)
+                    if match:
+                        iteracao_atual = int(match.group(1))
+                        break
+                
+                # Atualizar a barra de progresso
+                progresso = iteracao_atual / int(iteracoes_totais)
+                self.progress_bar.set(progresso)
+                self.progress_percentage.configure(text=f"{int(progresso * 100)}%")
+                
+                time.sleep(0.1)
+
+        threading.Thread(target=atualizar_barra_progresso_sub_process, args=(algoritmo, iteracoes_totais)).start()
+
 
     def run_algoritmo(self):
         def run():
             # Lógica para chamar o código em C aqui
+            self.run_button.configure(state="disabled")
             algoritmo = self.algoritmo_var.get()
             dataset = self.dataset_var.get()
             dataset_size = "100"
@@ -423,57 +461,60 @@ class AnimatedGraphApp:
                     dataset_name = "hyg109399.xyz.txt"
                     dataset_size = "109399"
 
-            #Adiciona o sulfixo exe ao arquivo binário caso esteja rodando no Windows
+            # Adiciona o sufixo exe ao arquivo binário caso esteja rodando no Windows
             bin_sulfix = ".exe" if platform.system() == "Windows" else ""
 
             match algoritmo:
-                    case "Nearest Neighbor (NN)":
-                        algoritmo = os.path.join("c_scripts","nn" + bin_sulfix)
-                        process = subprocess.Popen([algoritmo, dataset_name, dataset_size], 
-                                            stdout=subprocess.PIPE, 
-                                            stderr=subprocess.PIPE, 
-                                            text=True)
-                        
-                    case "Genetic Algorithm (GA)":
-                        algoritmo = os.path.join("c_scripts","ga" + bin_sulfix)
-                        print(algoritmo + " " + dataset_name + " " + dataset_size + " " + self.mutacao_entry.get() + " " + self.populacao_entry.get() + " " + self.iteracoes_entry.get())
-                        process = subprocess.Popen([algoritmo, dataset_name, dataset_size, self.mutacao_entry.get(), self.populacao_entry.get(), self.iteracoes_entry.get()], 
-                                            stdout=subprocess.PIPE, 
-                                            stderr=subprocess.PIPE, 
-                                            text=True)
-                        
-                    case "Ant Colony Optimization (ACO)":
-                        algoritmo = os.path.join("c_scripts","aco" + bin_sulfix)
-                        process = subprocess.Popen([algoritmo, dataset_name, dataset_size, self.n_ants_entry.get(), self.n_iterations_entry.get(), self.alpha_entry.get(), self.beta_entry.get(), self.evaporation_entry.get(), self.q_entry.get()], 
-                                    stdout=subprocess.PIPE, 
-                                    stderr=subprocess.PIPE, 
-                                    text=True)
-                        
-                    case "Greedy Randomized Adaptive Search Procedure (GRASP)":
-                        algoritmo = os.path.join("c_scripts","grasp" + bin_sulfix)
-                        process = subprocess.Popen([algoritmo, dataset_name, self.grasp_iterations_var.get(), self.grasp_alpha_var.get()],
-                                    stdout=subprocess.PIPE, 
-                                    stderr=subprocess.PIPE, 
-                                    text=True)
-                
-            print("algoritmo: " + algoritmo + " dataset: " + dataset_name + " dataset_size: " + dataset_size)
+                case "Nearest Neighbor (NN)":
+                    algoritmo_sigla = "nn"
+                    algoritmo = os.path.join("c_scripts", algoritmo_sigla + bin_sulfix)
+                    args = [algoritmo, dataset_name, dataset_size]
+                case "Genetic Algorithm (GA)":
+                    algoritmo_sigla = "ga"
+                    algoritmo = os.path.join("c_scripts", algoritmo_sigla + bin_sulfix)
+                    args = [algoritmo, dataset_name, dataset_size, self.mutacao_entry.get(), self.populacao_entry.get(), self.iteracoes_entry.get()]
+                    iteracoes_selecionadas = self.iteracoes_entry.get()
+                case "Ant Colony Optimization (ACO)":
+                    algoritmo_sigla = "aco"
+                    algoritmo = os.path.join("c_scripts", algoritmo_sigla + bin_sulfix)
+                    args = [algoritmo, dataset_name, dataset_size, self.n_ants_entry.get(), self.n_iterations_entry.get(), self.alpha_entry.get(), self.beta_entry.get(), self.evaporation_entry.get(), self.q_entry.get()]
+                    iteracoes_selecionadas = self.n_iterations_entry.get()
+                case "Greedy Randomized Adaptive Search Procedure (GRASP)":
+                    algoritmo_sigla = "grasp"
+                    algoritmo = os.path.join("c_scripts", algoritmo_sigla + bin_sulfix)
+                    args = [algoritmo, dataset_name, self.grasp_iterations_var.get(), self.grasp_alpha_var.get()]
+                    iteracoes_selecionadas = self.grasp_iterations_var.get()
 
-            # Espera até que o processo termine
+            print(f"algoritmo: {algoritmo} dataset: {dataset_name} dataset_size: {dataset_size}")
+
+            # Inicia a contagem de tempo antes de chamar o processo
+            start_time = time.time()
+
+            # Executa o processo
+            process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            if(algoritmo_sigla != "nn"):
+                self.atualizar_barra_progresso(algoritmo_sigla, iteracoes_selecionadas)
             stdout, stderr = process.communicate()
+
+            # Calcula o tempo de execução após a execução do processo
+            self.tempo_execucao = time.time() - start_time
+
+            print(f"Tempo de execução do algoritmo em C: {self.tempo_execucao} segundos")
 
             print(stdout)
             print(stderr)
-            
+
             numeros_strings = stdout[1:-1].split(', ')
             caminho_resutado = [int(num) for num in numeros_strings]
 
             # Atualizar o caminho com o resultado do algoritmo
             self.caminho = caminho_resutado
-            print(self.caminho)
             print("Caminho válido: " + str(self.valida_caminho()))
-            
+
             # Atualizar o gráfico na interface
             self.update_graph()
+            self.run_button.configure(state="normal")
+
 
         # Cria e inicia a thread para executar o algoritmo
         thread = threading.Thread(target=run)
@@ -570,7 +611,6 @@ class AnimatedGraphApp:
 
             # Ajustar o caminho para iniciar e terminar em 0, mantendo a ordem
             self.caminho = self.caminho[pos_zero:] + self.caminho[1:pos_zero] + [0]
-            print(self.caminho)
 
         if self.caminho[0] != 0 or self.caminho[-1] != 0:
             return False

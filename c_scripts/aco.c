@@ -101,7 +101,7 @@ int load_points(const char *filename, double **points)
 
 void ant_colony_optimization(double **points, int n_ants, int n_iterations, double alpha, double beta, double evaporation_rate, double Q)
 {
-    srand(time(NULL));
+    srand(42);
     FILE *log_file = create_log_file();
     // Alocar dinamicamente a matriz de feromônios
     double **pheromone = (double **)malloc(n_points * sizeof(double *));
@@ -224,11 +224,6 @@ void ant_colony_optimization(double **points, int n_ants, int n_iterations, doub
                     best_path[i] = paths[ant][i];
                 }
             }
-
-            if (iteration % (n_iterations / 10) == 0 && ant == n_ants - 1)
-            {
-                save_log(log_file, iteration, best_path, n_points, best_path_length);
-            }
         }
 
         // Atualiza os feromônios com evaporação
@@ -249,6 +244,8 @@ void ant_colony_optimization(double **points, int n_ants, int n_iterations, doub
             }
             pheromone[paths[ant][n_points - 1]][paths[ant][0]] += Q / path_lengths[ant];
         }
+
+        save_log(log_file, iteration + 1, best_path, n_points, best_path_length);
     }
 
     // Libera a memória alocada dinamicamente

@@ -29,6 +29,60 @@ typedef struct
     double fitness;
 } Individual;
 
+FILE *create_log_file()
+{
+    // Obter o timestamp atual
+    time_t t = time(NULL);
+    struct tm *tm_info = localtime(&t);
+
+    // Buffer para o nome do arquivo e para o caminho da pasta
+    char filename[50];
+    char directory[20] = "logs";
+
+    // Criar e abrir o arquivo
+    FILE *file = fopen("c_scripts/logs/log_ga", "w");
+    if (file == NULL)
+    {
+        perror("Erro ao criar o arquivo");
+        return NULL;
+    }
+
+    // Retornar o ponteiro para o arquivo
+    return file;
+}
+
+// Função para salvar informações no arquivo de log
+void save_log(FILE *file, int iteracao, int *caminho, int num_ids, int distancia_total)
+{
+    if (file == NULL)
+    {
+        perror("Arquivo não está aberto");
+        return;
+    }
+
+    // Salvar a iteração
+    fprintf(file, "Iteracao: %d\n", iteracao);
+
+    // Salvar o caminho
+    fprintf(file, "Caminho: ");
+    for (int i = 0; i < num_ids; i++)
+    {
+        fprintf(file, "%d", caminho[i]);
+        if (i < num_ids - 1)
+        {
+            fprintf(file, ", ");
+        }
+    }
+    fprintf(file, "\n");
+
+    // Salvar a distância total
+    fprintf(file, "Distancia total: %d\n", distancia_total);
+
+    fprintf(file, "\n");
+
+    fflush(file);
+}
+
 // Calcula a distância euclidiana entre dois pontos 3D
 double distance(Point p1, Point p2)
 {
@@ -277,7 +331,8 @@ double taxa_convergencai(double best_fitness[])
 
 double ga(const char *nome_arquivo)
 {
-    srand(time(NULL));
+    srand(42);
+    FILE *log_file = create_log_file();
     // Carregar coordenadas do arquivo
     Point points[n];
 
@@ -315,6 +370,7 @@ double ga(const char *nome_arquivo)
         //     // }
         //     // printf("\n");
         // }
+        save_log(log_file, i + 1, best_individual.path,  n, best_individual.fitness);
     }
 
     // Encontrar o melhor indivíduo

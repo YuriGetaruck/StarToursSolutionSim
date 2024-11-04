@@ -14,6 +14,60 @@ typedef struct
     float z;
 } CoordenadaEstrela;
 
+FILE *create_log_file()
+{
+    // Obter o timestamp atual
+    time_t t = time(NULL);
+    struct tm *tm_info = localtime(&t);
+
+    // Buffer para o nome do arquivo e para o caminho da pasta
+    char filename[50];
+    char directory[20] = "logs";
+
+    // Criar e abrir o arquivo
+    FILE *file = fopen("c_scripts/logs/log_grasp", "w");
+    if (file == NULL)
+    {
+        perror("Erro ao criar o arquivo");
+        return NULL;
+    }
+
+    // Retornar o ponteiro para o arquivo
+    return file;
+}
+
+// Função para salvar informações no arquivo de log
+void save_log(FILE *file, int iteracao, int *caminho, int num_ids, int distancia_total)
+{
+    if (file == NULL)
+    {
+        perror("Arquivo não está aberto");
+        return;
+    }
+
+    // Salvar a iteração
+    fprintf(file, "Iteracao: %d\n", iteracao);
+
+    // Salvar o caminho
+    fprintf(file, "Caminho: ");
+    for (int i = 0; i < num_ids; i++)
+    {
+        fprintf(file, "%d", caminho[i]);
+        if (i < num_ids - 1)
+        {
+            fprintf(file, ", ");
+        }
+    }
+    fprintf(file, "\n");
+
+    // Salvar a distância total
+    fprintf(file, "Distancia total: %d\n", distancia_total);
+
+    fprintf(file, "\n");
+
+    fflush(file);
+}
+
 // Função para calcular a distância entre dois pontos em 3D
 float calcularDistancia(CoordenadaEstrela ponto1, CoordenadaEstrela ponto2)
 {
@@ -276,7 +330,8 @@ void imprimirSolucao(int *solucao, int tamanho, float distanciaTotal)
 int main(int argc, char *argv[])
 {
     // Inicialização da semente para números aleatórios
-    srand(time(NULL));
+    srand(42);
+    FILE *log_file = create_log_file();
 
     // Verifica se os argumentos necessários foram passados
     if (argc < 4)
@@ -332,6 +387,8 @@ int main(int argc, char *argv[])
             melhorSolucao = copiarSolucao(solucao, tamanho);
             melhorDistancia = distancia;
         }
+
+        save_log(log_file, iter + 1, melhorSolucao, tamanho, melhorDistancia);
 
         free(solucao);
     }
