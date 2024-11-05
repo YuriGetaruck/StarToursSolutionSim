@@ -11,6 +11,7 @@ import os
 import platform
 import time
 import re
+from fpdf import FPDF
 
 class AnimatedGraphApp:
     def __init__(self, root):
@@ -27,7 +28,7 @@ class AnimatedGraphApp:
         ctk.set_default_color_theme("dark-blue")  # Tema azul escuro
 
         # Definir o tamanho da janela para Full HD
-        self.root.geometry("1600x990") #ratio 400:217
+        self.root.geometry("1600x918") #ratio 400:217
 
         # Configuração do layout
         self.frame_left = ctk.CTkFrame(self.root)
@@ -72,12 +73,14 @@ class AnimatedGraphApp:
 
         self.populacao_label = ctk.CTkLabel(self.frame_left, text="Tamanho da População:")
         self.populacao_label.pack(pady=5)
-        self.populacao_entry = ctk.CTkEntry(self.frame_left)
+        self.populacao_var = ctk.StringVar(value="30")
+        self.populacao_entry = ctk.CTkEntry(self.frame_left, textvariable=self.populacao_var)
         self.populacao_entry.pack(pady=5)
 
         self.iteracoes_label = ctk.CTkLabel(self.frame_left, text="Número de Iterações:")
         self.iteracoes_label.pack(pady=5)
-        self.iteracoes_entry = ctk.CTkEntry(self.frame_left)
+        self.iteracoes_var = ctk.StringVar(value="10000")
+        self.iteracoes_entry = ctk.CTkEntry(self.frame_left, textvariable=self.iteracoes_var)
         self.iteracoes_entry.pack(pady=5)
 
         # Hiperparâmetros para Algoritmo de Colônia de Formigas (ACO)
@@ -130,13 +133,13 @@ class AnimatedGraphApp:
         self.grasp_alpha_label.pack(pady=5)
         self.grasp_alpha_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=1.0, number_of_steps=100, command=self.update_grasp_alpha)
         self.grasp_alpha_slider.pack(pady=5)
-        self.grasp_alpha_var = ctk.StringVar(value="0.10")
+        self.grasp_alpha_var = ctk.StringVar(value="0.25")
         self.grasp_alpha_entry = ctk.CTkEntry(self.frame_left, textvariable=self.grasp_alpha_var)
         self.grasp_alpha_entry.pack(pady=5)
 
         self.grasp_iterations_label = ctk.CTkLabel(self.frame_left, text="Número de Iterações:")
         self.grasp_iterations_label.pack(pady=5)
-        self.grasp_iterations_var = ctk.StringVar(value="1000")  # Cria um StringVar com o valor padrão
+        self.grasp_iterations_var = ctk.StringVar(value="4000")  # Cria um StringVar com o valor padrão
         self.grasp_iterations_entry = ctk.CTkEntry(self.frame_left, textvariable=self.grasp_iterations_var)
         self.grasp_iterations_entry.pack(pady=5)
 
@@ -191,6 +194,12 @@ class AnimatedGraphApp:
 
         self.progress_percentage = ctk.CTkLabel(self.frame_right, text="0%", font=("Arial", 14))
         self.progress_percentage.pack(pady=10)
+
+        self.proximidade_caminho_o_label = ctk.CTkLabel(self.frame_right, text="Tempo execução:")
+        self.proximidade_caminho_o_label.pack(pady=5)
+        self.tempo_execucao_text = ctk.CTkTextbox(self.frame_right, height=10, width=150)
+        self.tempo_execucao_text.pack(pady=5)
+        self.tempo_execucao_text.insert(ctk.END, f"{self.tempo_execucao:.4f} segundos")
         
         # Configuração do gráfico 3D
         self.fig = plt.figure()
@@ -231,6 +240,9 @@ class AnimatedGraphApp:
         self.prox_caminho_o = self.get_prox_caminho_o()
         self.proximidade_caminho_o_text.delete("1.0", ctk.END)
         self.proximidade_caminho_o_text.insert(ctk.END, f"{self.prox_caminho_o:.2f} %")
+        self.tempo_execucao_text.delete("1.0", ctk.END)
+        self.tempo_execucao_text.insert(ctk.END, f"{self.tempo_execucao:.4f} segundos")
+
 
     def get_distancia_otima(self):
         tam = len(self.caminho)
@@ -404,7 +416,7 @@ class AnimatedGraphApp:
                 coordenadas_y[i] = coordenadas[best_path[i]][2]
                 coordenadas_z[i] = coordenadas[best_path[i]][3]
             
-            self.ax.plot(coordenadas_x, coordenadas_y, coordenadas_z, color='red', linewidth=1)
+            self.ax.plot(coordenadas_x, coordenadas_y, coordenadas_z, color='red', linewidth=0.5)
 
             # Atualizar o canvas com o novo gráfico
             self.canvas.draw()
@@ -414,6 +426,7 @@ class AnimatedGraphApp:
     def atualizar_barra_progresso(self, algoritmo, iteracoes_totais):
         def atualizar_barra_progresso_sub_process(algoritmo, iteracoes_totais):
             iteracao_atual = 0
+            self.progress_bar.set(0)
             while iteracao_atual < int(iteracoes_totais):
                 with open("c_scripts\\logs\\log_" + algoritmo, "r") as file:
                     linhas = file.readlines()
@@ -433,6 +446,89 @@ class AnimatedGraphApp:
                 time.sleep(0.1)
 
         threading.Thread(target=atualizar_barra_progresso_sub_process, args=(algoritmo, iteracoes_totais)).start()
+
+    def analisar_log_e_gerar_graficos(self, log_file: str, total_iteracoes: int, distancia_otima: float):
+        # Variáveis para armazenar dados
+        iteracoes = []
+        distancias = []
+
+        # Expressão regular para extrair iterações e distâncias
+        regex_iteracao = r"Iteracao:\s+(\d+)"
+        regex_distancia = r"Distancia total:\s+(\d+)"
+
+        # Leitura do arquivo de log
+        with open("c_scripts\\logs\\" + log_file, "r") as file:
+            for line in file:
+                match_iteracao = re.search(regex_iteracao, line)
+                match_distancia = re.search(regex_distancia, line)
+
+                if match_iteracao:
+                    iteracao = int(match_iteracao.group(1))
+                    iteracoes.append(iteracao)
+                elif match_distancia:
+                    distancia = int(match_distancia.group(1))
+                    distancias.append(distancia)
+        
+        distancia_obtida = np.min(distancias);
+
+        # Calculando a Taxa de Melhoria e Taxa de Convergência
+        taxa_melhoria = [100 * (distancia_otima - dist) / distancia_otima for dist in distancias]
+        taxa_convergencia = [0] + [100 * (distancias[i - 1] - distancias[i]) / distancias[i - 1] for i in range(1, len(distancias))]
+
+        # Gerar gráficos
+        plt.figure(figsize=(10, 5))
+        plt.plot(iteracoes, taxa_melhoria, label="Taxa de Melhoria (%)", color="blue")
+        plt.xlabel("Iterações")
+        plt.ylabel("Taxa de Melhoria (%)")
+        plt.title("Taxa de Melhoria ao Longo das Iterações")
+        plt.legend()
+        plt.grid(True)
+        plt.savefig("taxa_melhoria.png")
+
+        plt.figure(figsize=(10, 5))
+        plt.plot(iteracoes, taxa_convergencia, label="Taxa de Convergência (%)", color="green")
+        plt.xlabel("Iterações")
+        plt.ylabel("Taxa de Convergência (%)")
+        plt.title("Taxa de Convergência ao Longo das Iterações")
+        plt.legend()
+        plt.grid(True)
+        plt.savefig("taxa_convergencia.png")
+
+        plt.figure(figsize=(10, 5))
+        plt.plot(iteracoes, distancias, label="Distância Total", color="purple")
+        plt.axhline(y=distancia_otima, color="red", linestyle="--", label="Distância Ótima")
+        plt.xlabel("Iterações")
+        plt.ylabel("Distância Total")
+        plt.title("Distância Total ao Longo das Iterações")
+        plt.legend()
+        plt.grid(True)
+        plt.savefig("distancia_total.png")
+
+
+        # Criando PDF com gráficos
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 16)
+        pdf.cell(200, 10, "Análise de Log de Iterações", ln=True, align="C")
+
+        pdf.set_font("Arial", "", 12)
+        pdf.cell(200, 10, f"Total de Iterações: {total_iteracoes}", ln=True, align="L")
+        pdf.cell(200, 10, f"Distância Ótima: {distancia_otima}", ln=True, align="L")
+        pdf.cell(200, 10, f"Distância Obtida: {distancia_obtida}", ln=True, align="L")
+        pdf.cell(200, 10, f"Proximidade do caminho ótimo: {(distancia_otima / distancia_obtida) * 100:.2f}%", ln=True, align="L")
+        pdf.cell(200, 10, f"Tempo de execução: {self.tempo_execucao:.2f} segundos", ln=True, align="L")
+
+        pdf.add_page()
+        pdf.image("taxa_melhoria.png", x=10, y=20, w=180)
+        pdf.add_page()
+        pdf.image("taxa_convergencia.png", x=10, y=20, w=180)
+        pdf.add_page()
+        pdf.image("distancia_total.png", x=10, y=20, w=180)
+
+        # Salva o PDF
+        pdf.output("analise_log.pdf")
+
+        print("PDF 'analise_log.pdf' criado com sucesso.")
 
 
     def run_algoritmo(self):
@@ -469,6 +565,7 @@ class AnimatedGraphApp:
                     algoritmo_sigla = "nn"
                     algoritmo = os.path.join("c_scripts", algoritmo_sigla + bin_sulfix)
                     args = [algoritmo, dataset_name, dataset_size]
+                    iteracoes_selecionadas = int(dataset_size)
                 case "Genetic Algorithm (GA)":
                     algoritmo_sigla = "ga"
                     algoritmo = os.path.join("c_scripts", algoritmo_sigla + bin_sulfix)
@@ -492,8 +589,7 @@ class AnimatedGraphApp:
 
             # Executa o processo
             process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            if(algoritmo_sigla != "nn"):
-                self.atualizar_barra_progresso(algoritmo_sigla, iteracoes_selecionadas)
+            self.atualizar_barra_progresso(algoritmo_sigla, iteracoes_selecionadas)
             stdout, stderr = process.communicate()
 
             # Calcula o tempo de execução após a execução do processo
@@ -515,6 +611,8 @@ class AnimatedGraphApp:
             self.update_graph()
             self.run_button.configure(state="normal")
 
+            if(algoritmo_sigla != "nn"):
+                self.analisar_log_e_gerar_graficos("log_" + algoritmo_sigla, iteracoes_selecionadas, self.get_distancia_otima())
 
         # Cria e inicia a thread para executar o algoritmo
         thread = threading.Thread(target=run)
@@ -586,7 +684,7 @@ class AnimatedGraphApp:
         self.ax.scatter(coordenadas_x[1:tam - 1], coordenadas_y[1:tam - 1],
                     coordenadas_z[1:tam - 1], c='red', s=0.1)
 
-        self.ax.plot(coordenadas_x, coordenadas_y, coordenadas_z, color='yellow', linewidth=1)
+        self.ax.plot(coordenadas_x, coordenadas_y, coordenadas_z, color='yellow', linewidth=0.5)
 
         self.ax.scatter(0, 0, 0, c='orange', s=15)
         return self.fig, self.ax

@@ -12,6 +12,52 @@ typedef struct
     float z;
 } CoordenadaEstrela;
 
+FILE *create_log_file()
+{
+    // Criar e abrir o arquivo
+    FILE *file = fopen("c_scripts/logs/log_nn", "w");
+    if (file == NULL)
+    {
+        perror("Erro ao criar o arquivo");
+        return NULL;
+    }
+
+    // Retornar o ponteiro para o arquivo
+    return file;
+}
+
+// Função para salvar informações no arquivo de log
+void save_log(FILE *file, int iteracao, int *caminho, int num_ids, float distancia_total)
+{
+    if (file == NULL)
+    {
+        perror("Arquivo não está aberto");
+        return;
+    }
+
+    // Salvar a iteração
+    fprintf(file, "Iteracao: %d\n", iteracao);
+
+    // Salvar o caminho
+    fprintf(file, "Caminho: ");
+    for (int i = 0; i < num_ids; i++)
+    {
+        fprintf(file, "%d", caminho[i]);
+        if (i < num_ids - 1)
+        {
+            fprintf(file, ", ");
+        }
+    }
+    fprintf(file, "\n");
+
+    // Salvar a distância total
+    fprintf(file, "Distancia total: %lf\n", distancia_total);
+
+    fprintf(file, "\n");
+
+    fflush(file);
+}
+
 // Função para calcular a distância entre dois pontos em 3D
 float calcularDistancia(CoordenadaEstrela ponto1, CoordenadaEstrela ponto2)
 {
@@ -97,6 +143,7 @@ int encontrarProximoPontoMaisProximo(float **matrizDistancias, bool *visitado, i
 // Função para encontrar a rota usando o algoritmo guloso
 void algoritmoGulosoVizinhoMaisProximo(CoordenadaEstrela *coordenadas, float **matrizDistancias, int tamanho, int *caminho, float *distanciaTotal)
 {
+    FILE *log_file = create_log_file();
     bool *visitado = (bool *)calloc(tamanho, sizeof(bool));
     int pontoAtual = 0;
 
@@ -112,10 +159,12 @@ void algoritmoGulosoVizinhoMaisProximo(CoordenadaEstrela *coordenadas, float **m
         *distanciaTotal += matrizDistancias[pontoAtual][proximoPonto];
         visitado[proximoPonto] = true;
         pontoAtual = proximoPonto; // Atualizando o ponto atual para o próximo ponto selecionado
+        save_log(log_file, i, caminho, i, *distanciaTotal);
     }
 
     *distanciaTotal += matrizDistancias[pontoAtual][0];
     caminho[tamanho + 1] = coordenadas[0].id;
+    save_log(log_file, tamanho, caminho, tamanho, *distanciaTotal);
 
     free(visitado);
 }

@@ -11,7 +11,7 @@ float mutation_rate = 0.05;
 int pop_size = 30;
 int iterations = 10000;
 int n = 100;
-float target_distance = 1800;
+float target_distance = 1700;
 
 // Estrutura para representar um ponto 3D
 typedef struct
@@ -52,7 +52,7 @@ FILE *create_log_file()
 }
 
 // Função para salvar informações no arquivo de log
-void save_log(FILE *file, int iteracao, int *caminho, int num_ids, int distancia_total)
+void save_log(FILE *file, int iteracao, int *caminho, int num_ids, double distancia_total)
 {
     if (file == NULL)
     {
@@ -76,7 +76,7 @@ void save_log(FILE *file, int iteracao, int *caminho, int num_ids, int distancia
     fprintf(file, "\n");
 
     // Salvar a distância total
-    fprintf(file, "Distancia total: %d\n", distancia_total);
+    fprintf(file, "Distancia total: %lf.2\n", distancia_total);
 
     fprintf(file, "\n");
 
@@ -358,33 +358,12 @@ double ga(const char *nome_arquivo)
         Individual best_individual = find_best_individual(population);
         best_fitness[i] = best_individual.fitness;
 
-        // if (i % 1000 == 0)
-        // {
-
-        //     // printf("Iteracao: %d\n", i);
-        //     // printf("Comprimento do melhor caminho: %.2f\n", best_individual.fitness);
-        //     // printf("Caminho:\n");
-        //     // for (int j = 0; j < n; j++)
-        //     // {
-        //     //     printf("%d ", best_individual.path[j]);
-        //     // }
-        //     // printf("\n");
-        // }
-        save_log(log_file, i + 1, best_individual.path,  n, best_individual.fitness);
+        save_log(log_file, i + 1, best_individual.path, n, best_individual.fitness);
     }
 
     // Encontrar o melhor indivíduo
     Individual best_individual = find_best_individual(population);
 
-    // Imprimir o melhor caminho encontrado
-    // printf("Melhor caminho encontrado:\n");
-    // for (int i = 0; i < n; i++)
-    // {
-    //     printf("%d ", best_individual.path[i]);
-    // }
-    // printf("\n");
-
-    // Imprime o caminho
     printf("[");
     for (int i = 0; i < n; i++)
     {
@@ -397,12 +376,8 @@ double ga(const char *nome_arquivo)
             printf("%d", best_individual.path[i]);
         }
     }
-    printf(", 0]");
+    printf(", %d]", best_individual.path[0]);
 
-    // Imprimir o comprimento do melhor caminho encontrado
-    // printf("Comprimento do melhor caminho: %.2f\n", best_individual.fitness);
-
-    // Imprimir a taxa de convergência
     return taxa_convergencai(best_fitness);
 }
 
