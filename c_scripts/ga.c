@@ -316,11 +316,11 @@ void ler_coordenadas(const char *nome_arquivo, Point points[])
         points[i].y = y;
         points[i].z = z;
     }
-    for (int i = 0; i < n; i++)
+    //for (int i = 0; i < n; i++)
         // {
         //     printf("ID: %d, X: %.6f, Y: %.6f, Z: %.6f\n", points[i].id, points[i].x, points[i].y, points[i].z);
         // }
-        fclose(arquivo);
+    fclose(arquivo);
 }
 
 // Função para calcular e imprimir a taxa de convergência

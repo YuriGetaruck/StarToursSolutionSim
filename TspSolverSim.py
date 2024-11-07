@@ -428,7 +428,7 @@ class AnimatedGraphApp:
             iteracao_atual = 0
             self.progress_bar.set(0)
             while iteracao_atual < int(iteracoes_totais):
-                with open("c_scripts\\logs\\log_" + algoritmo, "r") as file:
+                with open("c_scripts/logs/log_" + algoritmo, "r") as file:
                     linhas = file.readlines()
                 
                 # Extrair a última iteração do log
@@ -457,7 +457,7 @@ class AnimatedGraphApp:
         regex_distancia = r"Distancia total:\s+(\d+)"
 
         # Leitura do arquivo de log
-        with open("c_scripts\\logs\\" + log_file, "r") as file:
+        with open("c_scripts/logs/" + log_file, "r") as file:
             for line in file:
                 match_iteracao = re.search(regex_iteracao, line)
                 match_distancia = re.search(regex_distancia, line)
