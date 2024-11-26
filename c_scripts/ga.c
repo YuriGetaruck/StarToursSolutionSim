@@ -99,15 +99,15 @@ void initialize_population(Individual population[], Point points[])
         for (int j = n - 1; j > 0; j--)
         {
             // Gerar um índice aleatório dentro do intervalo [0, j]
-            int k = rand() % (j + 1);
+            int k = rand() % (j);
 
             // Trocar os valores dos índices j e k (exceto para o ponto inicial)
-            if (k != 0) // Não embaralhar o ponto de partida
-            {
+            // if (k != 0) // Não embaralhar o ponto de partida
+            // {
                 int temp = population[i].path[j];
                 population[i].path[j] = population[i].path[k];
                 population[i].path[k] = temp;
-            }
+            // }
         }
 
         // Calcular o fitness do indivíduo
@@ -124,9 +124,10 @@ Individual tournament_selection(Individual population[])
     return (parent1.fitness < parent2.fitness) ? parent1 : parent2;
 }
 
-// Realiza o cruzamento entre dois indivíduos para gerar um novo indivíduo
+// Realiza o cruzamento entre dois indivíduos para gerar um novo indivíduo usando Order Crossover (OX)
 Individual crossover(Individual parent1, Individual parent2, Point *points)
 {
+    // Define os pontos de corte aleatoriamente
     int start = rand() % n;
     int end = rand() % n;
     if (start > end)
@@ -135,87 +136,60 @@ Individual crossover(Individual parent1, Individual parent2, Point *points)
         start = end;
         end = temp;
     }
+
     Individual child;
+
+    // Inicializa o caminho do filho com -1 (indica posições não preenchidas)
     for (int i = 0; i < n; i++)
     {
-        if (i >= start && i <= end)
-        {
-            child.path[i] = parent1.path[i];
-        }
-        else
-        {
-            child.path[i] = -1;
-        }
+        child.path[i] = -1;
     }
-    int index = 0;
+
+    // Copia o segmento do pai 1 para o filho
+    for (int i = start; i <= end; i++)
+    {
+        child.path[i] = parent1.path[i];
+    }
+
+    // Preenche o restante com genes do pai 2 na ordem em que aparecem
+    int index = (end + 1) % n; // Começa após o final do segmento copiado
     for (int i = 0; i < n; i++)
     {
-        if (index == start)
-        {
-            index = end + 1;
-        }
         int gene = parent2.path[i];
-        if (child.path[index] == -1)
+
+        // Verifica se o gene já está presente no segmento copiado do pai 1
+        bool contains = false;
+        for (int j = start; j <= end; j++)
         {
-            bool contains = false;
-            for (int j = 0; j < n; j++)
+            if (child.path[j] == gene)
             {
-                if (child.path[j] == gene)
-                {
-                    contains = true;
-                    break;
-                }
-            }
-            if (!contains)
-            {
-                child.path[index++] = gene;
+                contains = true;
+                break;
             }
         }
+
+        // Se o gene não estiver presente, adiciona ao filho
+        if (!contains)
+        {
+            child.path[index] = gene;
+            index = (index + 1) % n; // Avança circularmente
+        }
     }
+
+    // Calcula o fitness do filho
     child.fitness = calculate_fitness(child, points);
+
     return child;
 }
 
-// Realiza mutação por deslocamento simples em um indivíduo
-void mutate_deslocamento_simples(Individual *individual)
-{
-    if ((double)rand() / RAND_MAX < mutation_rate)
-    {
-        int start = rand() % (n - 1) + 1;  // Ignorar o ponto de partida
-        int length = rand() % (n - start); // Comprimento do deslocamento
-
-        int temp[n];
-        memcpy(temp, individual->path, sizeof(temp)); // Copia o caminho atual
-
-        // Desloca a sub-rota em 'length' posições
-        for (int i = 0; i < length; i++)
-            individual->path[start + i] = temp[start + length - i - 1];
-    }
-}
-
-void mutate_plus(Individual *individual)
-{
-    if ((double)rand() / RAND_MAX < 0.1)
-    {
-        int num_reversals = rand() % 3 + 1; // Escolha aleatoriamente entre 1, 2 ou 3 índices para inverter
-        for (int i = 0; i < num_reversals; i++)
-        {
-            int start = rand() % (n - 2) + 1; // Ignorar o ponto de partida e o último ponto
-            int end = start + 1;
-            int temp = individual->path[start];
-            individual->path[start] = individual->path[end];
-            individual->path[end] = temp;
-        }
-    }
-}
 
 // Realiza mutação em um indivíduo
 void mutate(Individual *individual)
 {
     if ((double)rand() / RAND_MAX < mutation_rate)
     {
-        int start = rand() % (n - 1) + 1; // Ignorar o ponto de partida
-        int end = rand() % (n - 1) + 1;   // Ignorar o ponto de partida
+        int start = rand() % (n - 1); // Ignorar o ponto de partida
+        int end = rand() % (n - 1);   // Ignorar o ponto de partida
         if (start > end)
         {
             int temp = start;
