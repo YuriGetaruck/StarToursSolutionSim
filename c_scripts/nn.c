@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <math.h> // Para utilizar as funções sqrt() e pow()
+#include <math.h>
+#include <time.h>
 
 // Estrutura para representar uma coordenada
 typedef struct
@@ -12,22 +13,28 @@ typedef struct
     float z;
 } CoordenadaEstrela;
 
-FILE *create_log_file()
+FILE *create_log_file(int tamanho)
 {
+    // Nome do diretório
+    const char *directory = "c_scripts/logs";
+
+    // Buffer para o nome do arquivo
+    char filename[100];
+    sprintf(filename, "%s/log_nn_%d.txt", directory, tamanho);
+
     // Criar e abrir o arquivo
-    FILE *file = fopen("c_scripts/logs/log_nn", "w");
+    FILE *file = fopen(filename, "w");
     if (file == NULL)
     {
         perror("Erro ao criar o arquivo");
         return NULL;
     }
 
-    // Retornar o ponteiro para o arquivo
     return file;
 }
 
 // Função para salvar informações no arquivo de log
-void save_log(FILE *file, int iteracao, int *caminho, int num_ids, float distancia_total)
+void save_log(FILE *file, int iteracao, double distancia_total, double tempo_decorrido)
 {
     if (file == NULL)
     {
@@ -35,26 +42,7 @@ void save_log(FILE *file, int iteracao, int *caminho, int num_ids, float distanc
         return;
     }
 
-    // Salvar a iteração
-    fprintf(file, "Iteracao: %d\n", iteracao);
-
-    // Salvar o caminho
-    fprintf(file, "Caminho: ");
-    for (int i = 0; i < num_ids; i++)
-    {
-        fprintf(file, "%d", caminho[i]);
-        if (i < num_ids - 1)
-        {
-            fprintf(file, ", ");
-        }
-    }
-    fprintf(file, "\n");
-
-    // Salvar a distância total
-    fprintf(file, "Distancia total: %lf\n", distancia_total);
-
-    fprintf(file, "\n");
-
+    fprintf(file, "%d,%.2f,%.3f\n", iteracao, distancia_total, tempo_decorrido);
     fflush(file);
 }
 
@@ -69,28 +57,36 @@ float calcularDistancia(CoordenadaEstrela ponto1, CoordenadaEstrela ponto2)
 // Função para criar a matriz de distâncias
 float **criarMatrizDistancias(CoordenadaEstrela *coordenadas, int tamanho)
 {
-    // printf("inicia\n");
     float **matrizDistancias = (float **)malloc(tamanho * sizeof(float *));
     if (matrizDistancias == NULL)
     {
-        printf("Erro ao alocar memória para matrizDistancias");
+        printf("Erro ao alocar memória para matrizDistancias\n");
         exit(EXIT_FAILURE);
     }
+
     for (int i = 0; i < tamanho; i++)
     {
         matrizDistancias[i] = (float *)malloc(tamanho * sizeof(float));
         if (matrizDistancias[i] == NULL)
         {
-            printf("Erro ao alocar memória para matrizDistancias");
+            printf("Erro ao alocar memória para matrizDistancias\n");
             exit(EXIT_FAILURE);
         }
-        for (int j = 0; j < tamanho; j++)
+
+        for (int j = 0; j <= i; j++)  // Apenas abaixo ou na diagonal principal
         {
-            matrizDistancias[i][j] = calcularDistancia(coordenadas[i], coordenadas[j]);
+            if (i == j)
+            {
+                matrizDistancias[i][j] = 0.0f;  // Distância para si mesmo é zero
+            }
+            else
+            {
+                matrizDistancias[i][j] = calcularDistancia(coordenadas[i], coordenadas[j]);
+                matrizDistancias[j][i] = matrizDistancias[i][j];  // Preenche a parte superior
+            }
         }
-        // printf("linha: %d\t", i);
     }
-    // printf("finaliza");
+
     return matrizDistancias;
 }
 
@@ -141,9 +137,8 @@ int encontrarProximoPontoMaisProximo(float **matrizDistancias, bool *visitado, i
 
 // ALGORITMO GULOSO
 // Função para encontrar a rota usando o algoritmo guloso
-void algoritmoGulosoVizinhoMaisProximo(CoordenadaEstrela *coordenadas, float **matrizDistancias, int tamanho, int *caminho, float *distanciaTotal)
+void algoritmoGulosoVizinhoMaisProximo(CoordenadaEstrela *coordenadas, float **matrizDistancias, int tamanho, int *caminho, float *distanciaTotal, clock_t inicio, FILE *log_file)
 {
-    FILE *log_file = create_log_file();
     bool *visitado = (bool *)calloc(tamanho, sizeof(bool));
     int pontoAtual = 0;
 
@@ -159,12 +154,16 @@ void algoritmoGulosoVizinhoMaisProximo(CoordenadaEstrela *coordenadas, float **m
         *distanciaTotal += matrizDistancias[pontoAtual][proximoPonto];
         visitado[proximoPonto] = true;
         pontoAtual = proximoPonto; // Atualizando o ponto atual para o próximo ponto selecionado
-        save_log(log_file, i, caminho, i, *distanciaTotal);
+        clock_t autal = clock();
+        double tempo_decorrido = (double)(autal - inicio) / CLOCKS_PER_SEC;
+        save_log(log_file, i, *distanciaTotal, tempo_decorrido);
     }
 
     *distanciaTotal += matrizDistancias[pontoAtual][0];
     caminho[tamanho + 1] = coordenadas[0].id;
-    save_log(log_file, tamanho, caminho, tamanho, *distanciaTotal);
+    clock_t autal = clock();
+    double tempo_decorrido = (double)(autal - inicio) / CLOCKS_PER_SEC;
+    save_log(log_file, tamanho, *distanciaTotal, tempo_decorrido);
 
     free(visitado);
 }
@@ -219,6 +218,8 @@ CoordenadaEstrela *lerCoordenadas(const char *nomeArquivo, int *tamanho)
 
 int main(int argc, char *argv[])
 {
+    clock_t inicio = clock();
+
     // Verifica se o nome do arquivo foi passado como argumento
     if (argc < 2)
     {
@@ -235,6 +236,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Tamanho inválido: %s\n", argv[2]);
         return EXIT_FAILURE;
     }
+    FILE *log_file = create_log_file(tamanho);
     CoordenadaEstrela *coordenadas = (CoordenadaEstrela *)malloc(tamanho * sizeof(CoordenadaEstrela));
 
     if (coordenadas == NULL)
@@ -250,7 +252,7 @@ int main(int argc, char *argv[])
     int caminho[tamanho + 1];
     float distanciaGuloso;
 
-    algoritmoGulosoVizinhoMaisProximo(coordenadas, matrizDistancias, tamanho, caminho, &distanciaGuloso);
+    algoritmoGulosoVizinhoMaisProximo(coordenadas, matrizDistancias, tamanho, caminho, &distanciaGuloso, inicio, log_file);
 
     // Imprime o caminho
     printf("[");

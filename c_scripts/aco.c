@@ -15,28 +15,26 @@ double Q;
 
 FILE *create_log_file()
 {
-    // Obter o timestamp atual
-    time_t t = time(NULL);
-    struct tm *tm_info = localtime(&t);
+    // Nome do diretório
+    const char *directory = "c_scripts/logs";
 
-    // Buffer para o nome do arquivo e para o caminho da pasta
-    char filename[50];
-    char directory[20] = "logs";
+    // Buffer para o nome do arquivo
+    char filename[100];
+    sprintf(filename, "%s/log_aco_%d_%d_%.2f_%.2f_%.2f_%.2f_%d.txt", directory, n_points, n_ants, alpha, beta, evaporation_rate, Q, n_iterations);
 
     // Criar e abrir o arquivo
-    FILE *file = fopen("c_scripts/logs/log_aco", "w");
+    FILE *file = fopen(filename, "w");
     if (file == NULL)
     {
         perror("Erro ao criar o arquivo");
         return NULL;
     }
 
-    // Retornar o ponteiro para o arquivo
     return file;
 }
 
 // Função para salvar informações no arquivo de log
-void save_log(FILE *file, int iteracao, int *caminho, int num_ids, int distancia_total)
+void save_log(FILE *file, int iteracao, int distancia_total, double tempo_decorrido)
 {
     if (file == NULL)
     {
@@ -45,25 +43,7 @@ void save_log(FILE *file, int iteracao, int *caminho, int num_ids, int distancia
     }
 
     // Salvar a iteração
-    fprintf(file, "Iteracao: %d\n", iteracao);
-
-    // Salvar o caminho
-    fprintf(file, "Caminho: ");
-    for (int i = 0; i < num_ids; i++)
-    {
-        fprintf(file, "%d", caminho[i]);
-        if (i < num_ids - 1)
-        {
-            fprintf(file, ", ");
-        }
-    }
-    fprintf(file, "\n");
-
-    // Salvar a distância total
-    fprintf(file, "Distancia total: %d\n", distancia_total);
-
-    fprintf(file, "\n");
-
+    fprintf(file, "%d,%d,%.3f\n", iteracao, distancia_total, tempo_decorrido);
     fflush(file);
 }
 
@@ -99,10 +79,11 @@ int load_points(const char *filename, double **points)
     return 0;
 }
 
-void ant_colony_optimization(double **points, int n_ants, int n_iterations, double alpha, double beta, double evaporation_rate, double Q)
+void ant_colony_optimization(double **points, int n_ants, int n_iterations, double alpha, double beta, double evaporation_rate, double Q, FILE *log_file)
 {
+    clock_t inicio = clock();
     srand(42);
-    FILE *log_file = create_log_file();
+
     // Alocar dinamicamente a matriz de feromônios
     double **pheromone = (double **)malloc(n_points * sizeof(double *));
     for (int i = 0; i < n_points; i++)
@@ -137,9 +118,13 @@ void ant_colony_optimization(double **points, int n_ants, int n_iterations, doub
         {
             int visited[n_points + 1];
             memset(visited, 0, sizeof(visited)); // Zera o array para garantir que todos os pontos estão marcados como não visitados.
-            int current_point = 0;               // Começa sempre no ponto 0
-            visited[current_point] = 1;
-            paths[ant][0] = current_point;
+
+            // Inicializar cada formiga em um ponto aleatório ou único
+            int current_point = ant % n_points; // Exemplo: Distribuição cíclica entre os pontos
+            // Para aleatoriedade, use: int current_point = rand() % n_points;
+
+            visited[current_point] = 1; // Marca o ponto inicial como visitado
+            paths[ant][0] = current_point; // Define o ponto inicial no caminho da formiga
             double path_length = 0;
 
             // Constrói o caminho para a formiga
@@ -244,8 +229,11 @@ void ant_colony_optimization(double **points, int n_ants, int n_iterations, doub
             }
             pheromone[paths[ant][n_points - 1]][paths[ant][0]] += Q / path_lengths[ant];
         }
+        
+        clock_t autal = clock();
+        double tempo_decorrido = (double)(autal - inicio) / CLOCKS_PER_SEC;
 
-        save_log(log_file, iteration + 1, best_path, n_points, best_path_length);
+        save_log(log_file, iteration + 1, best_path_length, tempo_decorrido);
     }
 
     // Libera a memória alocada dinamicamente
@@ -266,16 +254,9 @@ void ant_colony_optimization(double **points, int n_ants, int n_iterations, doub
     printf("[");
     for (int i = 0; i < n_points; i++)
     {
-        if (i < n_points - 1)
-        {
-            printf("%d, ", best_path[i]);
-        }
-        else
-        {
-            printf("%d", best_path[i]);
-        }
+        printf("%d, ", best_path[i]);
     }
-    printf(", 0]");
+    printf("%d]", best_path[0]);
 }
 
 int main(int argc, char *argv[])
@@ -299,6 +280,8 @@ int main(int argc, char *argv[])
     char *endptr_q;
     Q = strtof(str_q, &endptr_q);
 
+    FILE *log_file = create_log_file();
+
     double **points = (double **)malloc(n_points * sizeof(double *));
     for (int i = 0; i < n_points; i++)
     {
@@ -311,7 +294,7 @@ int main(int argc, char *argv[])
     }
 
     // Executa a otimização
-    ant_colony_optimization(points, n_ants, n_iterations, alpha, beta, evaporation_rate, Q);
+    ant_colony_optimization(points, n_ants, n_iterations, alpha, beta, evaporation_rate, Q, log_file);
 
     for (int i = 0; i < n_points; i++)
     {

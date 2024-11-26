@@ -31,28 +31,27 @@ typedef struct
 
 FILE *create_log_file()
 {
-    // Obter o timestamp atual
-    time_t t = time(NULL);
-    struct tm *tm_info = localtime(&t);
+    // Nome do diretório
+    const char *directory = "c_scripts/logs";
 
-    // Buffer para o nome do arquivo e para o caminho da pasta
-    char filename[50];
-    char directory[20] = "logs";
+    // Buffer para o nome do arquivo
+    char filename[100];
+    sprintf(filename, "%s/log_ga_%d_%.2f_%d_%d.txt", directory, n, mutation_rate, pop_size, iterations);
 
     // Criar e abrir o arquivo
-    FILE *file = fopen("c_scripts/logs/log_ga", "w");
+    FILE *file = fopen(filename, "w");
     if (file == NULL)
     {
         perror("Erro ao criar o arquivo");
         return NULL;
     }
 
-    // Retornar o ponteiro para o arquivo
     return file;
 }
 
+
 // Função para salvar informações no arquivo de log
-void save_log(FILE *file, int iteracao, int *caminho, int num_ids, double distancia_total)
+void save_log(FILE *file, int iteracao, double distancia_total, double tempo_decorrido)
 {
     if (file == NULL)
     {
@@ -60,26 +59,7 @@ void save_log(FILE *file, int iteracao, int *caminho, int num_ids, double distan
         return;
     }
 
-    // Salvar a iteração
-    fprintf(file, "Iteracao: %d\n", iteracao);
-
-    // Salvar o caminho
-    fprintf(file, "Caminho: ");
-    for (int i = 0; i < num_ids; i++)
-    {
-        fprintf(file, "%d", caminho[i]);
-        if (i < num_ids - 1)
-        {
-            fprintf(file, ", ");
-        }
-    }
-    fprintf(file, "\n");
-
-    // Salvar a distância total
-    fprintf(file, "Distancia total: %lf.2\n", distancia_total);
-
-    fprintf(file, "\n");
-
+    fprintf(file, "%d,%.2f,%.3f\n", iteracao, distancia_total, tempo_decorrido);
     fflush(file);
 }
 
@@ -253,33 +233,62 @@ void mutate(Individual *individual)
     }
 }
 
+// Comparador para ordenar indivíduos por fitness (menor fitness primeiro)
+int compare_fitness(const void *a, const void *b)
+{
+    Individual *ind1 = (Individual *)a;
+    Individual *ind2 = (Individual *)b;
+    return (ind1->fitness > ind2->fitness) - (ind1->fitness < ind2->fitness);
+}
+
 // Evolui a população por uma geração e verifica o critério de parada
 bool evolve_population(Individual population[], Point points[])
 {
-    Individual new_population[pop_size];
+    Individual combined_population[2 * pop_size];
+    int index = 0;
+
+    // Copia a população atual para a lista combinada
+    for (int i = 0; i < pop_size; i++)
+    {
+        combined_population[index++] = population[i];
+    }
+
+    // Gera nova população (filhos)
     for (int i = 0; i < pop_size; i++)
     {
         Individual parent1 = tournament_selection(population);
         Individual parent2 = tournament_selection(population);
         Individual child = crossover(parent1, parent2, points);
         mutate(&child);
-        new_population[i] = child;
+
+        // Adiciona o filho à lista combinada
+        combined_population[index++] = child;
+
+        // Verifica o critério de parada
         if (child.fitness < target_distance)
-        { // Verifica o critério de parada
+        {
+            // Ordena a população combinada pelo fitness
+            qsort(combined_population, index, sizeof(Individual), compare_fitness);
+
+            // Seleciona os melhores para a nova população
             for (int j = 0; j < pop_size; j++)
             {
-                population[j] = new_population[j];
+                population[j] = combined_population[j];
             }
             return true;
         }
     }
+
+    // Ordena a população combinada pelo fitness
+    qsort(combined_population, index, sizeof(Individual), compare_fitness);
+
+    // Seleciona os melhores para a nova população
     for (int i = 0; i < pop_size; i++)
     {
-        population[i] = new_population[i];
+        population[i] = combined_population[i];
     }
-    return false;
 
-    // todo - agrupar pais e filhos em uma lista ordenada pelo fitness e retornar os N (pop_size) melhores
+    return false;
 }
 
 // Encontra o melhor indivíduo na população
@@ -331,6 +340,7 @@ double taxa_convergencai(double best_fitness[])
 
 double ga(const char *nome_arquivo)
 {
+    clock_t inicio = clock();
     srand(42);
     FILE *log_file = create_log_file();
     // Carregar coordenadas do arquivo
@@ -358,7 +368,9 @@ double ga(const char *nome_arquivo)
         Individual best_individual = find_best_individual(population);
         best_fitness[i] = best_individual.fitness;
 
-        save_log(log_file, i + 1, best_individual.path, n, best_individual.fitness);
+        clock_t autal = clock();
+        double tempo_decorrido = (double)(autal - inicio) / CLOCKS_PER_SEC;
+        save_log(log_file, i + 1, best_individual.fitness, tempo_decorrido);
     }
 
     // Encontrar o melhor indivíduo

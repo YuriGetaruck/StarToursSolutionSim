@@ -14,30 +14,28 @@ typedef struct
     float z;
 } CoordenadaEstrela;
 
-FILE *create_log_file()
+FILE *create_log_file(int tamanho, double alpha, int iteracoes)
 {
-    // Obter o timestamp atual
-    time_t t = time(NULL);
-    struct tm *tm_info = localtime(&t);
+    // Nome do diretório
+    const char *directory = "c_scripts/logs";
 
-    // Buffer para o nome do arquivo e para o caminho da pasta
-    char filename[50];
-    char directory[20] = "logs";
+    // Buffer para o nome do arquivo
+    char filename[100];
+    sprintf(filename, "%s/log_grasp_%d_%.2f_%d.txt", directory, tamanho, alpha, iteracoes);
 
     // Criar e abrir o arquivo
-    FILE *file = fopen("c_scripts/logs/log_grasp", "w");
+    FILE *file = fopen(filename, "w");
     if (file == NULL)
     {
         perror("Erro ao criar o arquivo");
         return NULL;
     }
 
-    // Retornar o ponteiro para o arquivo
     return file;
 }
 
 // Função para salvar informações no arquivo de log
-void save_log(FILE *file, int iteracao, int *caminho, int num_ids, int distancia_total)
+void save_log(FILE *file, int iteracao, double distancia_total, double tempo_decorrido)
 {
     if (file == NULL)
     {
@@ -45,26 +43,7 @@ void save_log(FILE *file, int iteracao, int *caminho, int num_ids, int distancia
         return;
     }
 
-    // Salvar a iteração
-    fprintf(file, "Iteracao: %d\n", iteracao);
-
-    // Salvar o caminho
-    fprintf(file, "Caminho: ");
-    for (int i = 0; i < num_ids; i++)
-    {
-        fprintf(file, "%d", caminho[i]);
-        if (i < num_ids - 1)
-        {
-            fprintf(file, ", ");
-        }
-    }
-    fprintf(file, "\n");
-
-    // Salvar a distância total
-    fprintf(file, "Distancia total: %d\n", distancia_total);
-
-    fprintf(file, "\n");
-
+    fprintf(file, "%d,%.2f,%.3f\n", iteracao, distancia_total, tempo_decorrido);
     fflush(file);
 }
 
@@ -85,6 +64,7 @@ float **criarMatrizDistancias(CoordenadaEstrela *coordenadas, int tamanho)
         printf("Erro ao alocar memória para matrizDistancias\n");
         exit(EXIT_FAILURE);
     }
+
     for (int i = 0; i < tamanho; i++)
     {
         matrizDistancias[i] = (float *)malloc(tamanho * sizeof(float));
@@ -93,18 +73,15 @@ float **criarMatrizDistancias(CoordenadaEstrela *coordenadas, int tamanho)
             printf("Erro ao alocar memória para matrizDistancias\n");
             exit(EXIT_FAILURE);
         }
-        for (int j = 0; j < tamanho; j++)
+
+        for (int j = 0; j < i; j++)  // Calcula apenas abaixo da diagonal principal
         {
-            if (i == j)
-            {
-                matrizDistancias[i][j] = 0.0f;
-            }
-            else
-            {
-                matrizDistancias[i][j] = calcularDistancia(coordenadas[i], coordenadas[j]);
-            }
+            matrizDistancias[i][j] = calcularDistancia(coordenadas[i], coordenadas[j]);
+            matrizDistancias[j][i] = matrizDistancias[i][j];  // Preenche a parte de cima da diagonal
         }
+        matrizDistancias[i][i] = 0.0f;  // A distância de uma estrela para ela mesma é 0
     }
+
     return matrizDistancias;
 }
 
@@ -329,9 +306,10 @@ void imprimirSolucao(int *solucao, int tamanho, float distanciaTotal)
 
 int main(int argc, char *argv[])
 {
+    clock_t inicio = clock();
     // Inicialização da semente para números aleatórios
     srand(42);
-    FILE *log_file = create_log_file();
+
 
     // Verifica se os argumentos necessários foram passados
     if (argc < 4)
@@ -365,6 +343,8 @@ int main(int argc, char *argv[])
     int *melhorSolucao = NULL;
     float melhorDistancia = INFINITY;
 
+    FILE *log_file = create_log_file(tamanho, alpha, numIteracoes);
+
     // GRASP Iterativo
     for (int iter = 0; iter < numIteracoes; iter++)
     {
@@ -388,7 +368,9 @@ int main(int argc, char *argv[])
             melhorDistancia = distancia;
         }
 
-        save_log(log_file, iter + 1, melhorSolucao, tamanho, melhorDistancia);
+        clock_t autal = clock();
+        double tempo_decorrido = (double)(autal - inicio) / CLOCKS_PER_SEC;
+        save_log(log_file, iter + 1, melhorDistancia, tempo_decorrido);
 
         free(solucao);
     }

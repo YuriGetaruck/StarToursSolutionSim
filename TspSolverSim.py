@@ -1,8 +1,9 @@
-import customtkinter as ctk
-import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
 from mpl_toolkits.mplot3d import Axes3D
+from fpdf import FPDF
+import customtkinter as ctk
+import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
 import subprocess
@@ -11,7 +12,8 @@ import os
 import platform
 import time
 import re
-from fpdf import FPDF
+import csv
+
 
 class AnimatedGraphApp:
     def __init__(self, root):
@@ -98,7 +100,7 @@ class AnimatedGraphApp:
 
         self.alpha_label = ctk.CTkLabel(self.frame_left, text="Valor de Alpha:")
         self.alpha_label.pack(pady=5)
-        self.alpha_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=1.0, number_of_steps=100, command=self.update_alpha)
+        self.alpha_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=3.0, number_of_steps=100, command=self.update_alpha)
         self.alpha_slider.pack(pady=5)
         self.alpha_var = ctk.StringVar(value="1.00")
         self.alpha_entry = ctk.CTkEntry(self.frame_left, textvariable=self.alpha_var)
@@ -106,9 +108,9 @@ class AnimatedGraphApp:
 
         self.beta_label = ctk.CTkLabel(self.frame_left, text="Valor de Beta:")
         self.beta_label.pack(pady=5)
-        self.beta_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=1.0, number_of_steps=100, command=self.update_beta)
+        self.beta_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=5.0, number_of_steps=100, command=self.update_beta)
         self.beta_slider.pack(pady=5)
-        self.beta_var = ctk.StringVar(value="1.00")
+        self.beta_var = ctk.StringVar(value="2.50")
         self.beta_entry = ctk.CTkEntry(self.frame_left, textvariable=self.beta_var)
         self.beta_entry.pack(pady=5)
 
@@ -116,15 +118,15 @@ class AnimatedGraphApp:
         self.evaporation_label.pack(pady=5)
         self.evaporation_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=1.0, number_of_steps=100, command=self.update_evaporation)
         self.evaporation_slider.pack(pady=5)
-        self.evaporation_var = ctk.StringVar(value="0.3")
+        self.evaporation_var = ctk.StringVar(value="0.30")
         self.evaporation_entry = ctk.CTkEntry(self.frame_left, textvariable=self.evaporation_var)
         self.evaporation_entry.pack(pady=5)
 
         self.q_label = ctk.CTkLabel(self.frame_left, text="Valor de Q:")
         self.q_label.pack(pady=5)
-        self.q_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=1.0, number_of_steps=100, command=self.update_q)
+        self.q_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=10.0, number_of_steps=100, command=self.update_q)
         self.q_slider.pack(pady=5)
-        self.q_var = ctk.StringVar(value="0.3")
+        self.q_var = ctk.StringVar(value="1.00")
         self.q_entry = ctk.CTkEntry(self.frame_left, textvariable=self.q_var)
         self.q_entry.pack(pady=5)
 
@@ -423,21 +425,24 @@ class AnimatedGraphApp:
         else:
             self.update_graph()
 
-    def atualizar_barra_progresso(self, algoritmo, iteracoes_totais):
-        def atualizar_barra_progresso_sub_process(algoritmo, iteracoes_totais):
+    def atualizar_barra_progresso(self, log_file, iteracoes_totais):
+        def atualizar_barra_progresso_sub_process(log_file, iteracoes_totais):
             iteracao_atual = 0
             self.progress_bar.set(0)
+            time.sleep(0.5)
+
+
             while iteracao_atual < int(iteracoes_totais):
-                with open("c_scripts/logs/log_" + algoritmo, "r") as file:
-                    linhas = file.readlines()
-                
-                # Extrair a última iteração do log
-                for linha in reversed(linhas):
-                    match = re.search(r"Iteracao: (\d+)", linha)
-                    if match:
-                        iteracao_atual = int(match.group(1))
-                        break
-                
+                # Abrir o arquivo CSV e ler as linhas
+                with open("c_scripts/logs/" + log_file + ".txt", "r") as file:
+                    csv_reader = csv.reader(file)
+                    last_row = None
+                    for row in csv_reader:
+                        last_row = row  # Mantém a última linha lida
+
+                    if last_row:  # Se houver dados no CSV
+                        iteracao_atual = int(last_row[0])  # Usar a primeira célula (iterações)
+
                 # Atualizar a barra de progresso
                 progresso = iteracao_atual / int(iteracoes_totais)
                 self.progress_bar.set(progresso)
@@ -445,37 +450,37 @@ class AnimatedGraphApp:
                 
                 time.sleep(0.1)
 
-        threading.Thread(target=atualizar_barra_progresso_sub_process, args=(algoritmo, iteracoes_totais)).start()
-
+        # Inicia a thread para atualizar a barra de progresso
+        threading.Thread(target=atualizar_barra_progresso_sub_process, args=(log_file, iteracoes_totais)).start()
+        
     def analisar_log_e_gerar_graficos(self, log_file: str, total_iteracoes: int, distancia_otima: float):
         # Variáveis para armazenar dados
         iteracoes = []
         distancias = []
+        tempos = []
 
-        # Expressão regular para extrair iterações e distâncias
-        regex_iteracao = r"Iteracao:\s+(\d+)"
-        regex_distancia = r"Distancia total:\s+(\d+)"
+        time.sleep(2)
 
-        # Leitura do arquivo de log
-        with open("c_scripts/logs/" + log_file, "r") as file:
-            for line in file:
-                match_iteracao = re.search(regex_iteracao, line)
-                match_distancia = re.search(regex_distancia, line)
+        # Leitura do arquivo CSV
+        with open("c_scripts/logs/" + log_file + ".txt", "r") as file:
+            csv_reader = csv.reader(file)
+            for row in csv_reader:
+                iteracao = int(row[0])  # Iteração
+                distancia = float(row[1])  # Distância
+                tempo = float(row[2])  # Tempo
 
-                if match_iteracao:
-                    iteracao = int(match_iteracao.group(1))
-                    iteracoes.append(iteracao)
-                elif match_distancia:
-                    distancia = int(match_distancia.group(1))
-                    distancias.append(distancia)
+                iteracoes.append(iteracao)
+                distancias.append(distancia)
+                tempos.append(tempo)
         
-        distancia_obtida = np.min(distancias);
+        # Calculando a distância mínima obtida
+        distancia_obtida = np.min(distancias)
 
         # Calculando a Taxa de Melhoria e Taxa de Convergência
         taxa_melhoria = [100 * (distancia_otima - dist) / distancia_otima for dist in distancias]
         taxa_convergencia = [0] + [100 * (distancias[i - 1] - distancias[i]) / distancias[i - 1] for i in range(1, len(distancias))]
 
-        # Gerar gráficos
+        # Gerar gráfico da Taxa de Melhoria
         plt.figure(figsize=(10, 5))
         plt.plot(iteracoes, taxa_melhoria, label="Taxa de Melhoria (%)", color="blue")
         plt.xlabel("Iterações")
@@ -485,6 +490,7 @@ class AnimatedGraphApp:
         plt.grid(True)
         plt.savefig("taxa_melhoria.png")
 
+        # Gerar gráfico da Taxa de Convergência
         plt.figure(figsize=(10, 5))
         plt.plot(iteracoes, taxa_convergencia, label="Taxa de Convergência (%)", color="green")
         plt.xlabel("Iterações")
@@ -494,6 +500,7 @@ class AnimatedGraphApp:
         plt.grid(True)
         plt.savefig("taxa_convergencia.png")
 
+        # Gerar gráfico da Distância Total
         plt.figure(figsize=(10, 5))
         plt.plot(iteracoes, distancias, label="Distância Total", color="purple")
         plt.axhline(y=distancia_otima, color="red", linestyle="--", label="Distância Ótima")
@@ -503,7 +510,6 @@ class AnimatedGraphApp:
         plt.legend()
         plt.grid(True)
         plt.savefig("distancia_total.png")
-
 
         # Criando PDF com gráficos
         pdf = FPDF()
@@ -589,7 +595,18 @@ class AnimatedGraphApp:
 
             # Executa o processo
             process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            self.atualizar_barra_progresso(algoritmo_sigla, iteracoes_selecionadas)
+
+            match algoritmo_sigla:
+                    case "grasp":
+                        log_file = "log_grasp_" + dataset_size + "_" + self.grasp_alpha_var.get() + "_" + self.grasp_iterations_var.get()
+                    case "aco":
+                        log_file = "log_aco_" + dataset_size + "_" + self.n_ants_entry.get() + "_" + self.alpha_entry.get() + "_" + self.beta_entry.get() + "_" + self.evaporation_entry.get() + "_" + self.q_entry.get() + "_" + self.n_iterations_entry.get()
+                    case "ga":
+                        log_file = "log_ga_" + dataset_size + "_" + self.mutacao_entry.get() + "_" + self.populacao_entry.get() + "_" + self.iteracoes_entry.get()
+                    case "nn":
+                        log_file = "log_nn_" + dataset_size
+
+            self.atualizar_barra_progresso(log_file, iteracoes_selecionadas)
             stdout, stderr = process.communicate()
 
             # Calcula o tempo de execução após a execução do processo
@@ -612,7 +629,7 @@ class AnimatedGraphApp:
             self.run_button.configure(state="normal")
 
             if(algoritmo_sigla != "nn"):
-                self.analisar_log_e_gerar_graficos("log_" + algoritmo_sigla, iteracoes_selecionadas, self.get_distancia_otima())
+                self.analisar_log_e_gerar_graficos(log_file, iteracoes_selecionadas, self.get_distancia_otima())
 
         # Cria e inicia a thread para executar o algoritmo
         thread = threading.Thread(target=run)
@@ -681,10 +698,10 @@ class AnimatedGraphApp:
             coordenadas_y[i] = coordenadas[caminho[i]][2]
             coordenadas_z[i] = coordenadas[caminho[i]][3]
 
-        self.ax.scatter(coordenadas_x[1:tam - 1], coordenadas_y[1:tam - 1],
-                    coordenadas_z[1:tam - 1], c='red', s=0.1)
+        # self.ax.scatter(coordenadas_x[1:tam - 1], coordenadas_y[1:tam - 1],
+        #             coordenadas_z[1:tam - 1], c='red', s=0.01)
 
-        self.ax.plot(coordenadas_x, coordenadas_y, coordenadas_z, color='yellow', linewidth=0.5)
+        self.ax.plot(coordenadas_x, coordenadas_y, coordenadas_z, color='yellow', linewidth=0.25)
 
         self.ax.scatter(0, 0, 0, c='orange', s=15)
         return self.fig, self.ax
@@ -717,15 +734,15 @@ class AnimatedGraphApp:
         print(len(self.caminho))
         numeros_esperados = np.arange(len(self.caminho) - 1)
         numeros_esperados = np.insert(numeros_esperados, 0, 0)
-        
+        print(numeros_esperados)
+        print()
+
         # Cria um conjunto dos números presentes no caminho, exceto o último 0
         numeros_no_caminho = np.sort(self.caminho)
-        
+        print(numeros_no_caminho)
         # Verifica se todos os números esperados estão presentes e se são únicos (exceto o último 0)
-        if numeros_no_caminho.all() == numeros_esperados.all():
-            return True
-        else:
-            return False
+        return np.array_equal(numeros_no_caminho, numeros_esperados)
+
 
 if __name__ == "__main__":
     root = ctk.CTk()
