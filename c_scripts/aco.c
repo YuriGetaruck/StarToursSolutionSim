@@ -15,14 +15,11 @@ double Q;
 
 FILE *create_log_file()
 {
-    // Nome do diretório
     const char *directory = "c_scripts/logs";
 
-    // Buffer para o nome do arquivo
     char filename[100];
     sprintf(filename, "%s/log_aco_%d_%d_%.2f_%.2f_%.2f_%.2f_%d.txt", directory, n_points, n_ants, alpha, beta, evaporation_rate, Q, n_iterations);
 
-    // Criar e abrir o arquivo
     FILE *file = fopen(filename, "w");
     if (file == NULL)
     {
@@ -33,7 +30,6 @@ FILE *create_log_file()
     return file;
 }
 
-// Função para salvar informações no arquivo de log
 void save_log(FILE *file, int iteracao, int distancia_total, double tempo_decorrido)
 {
     if (file == NULL)
@@ -42,18 +38,15 @@ void save_log(FILE *file, int iteracao, int distancia_total, double tempo_decorr
         return;
     }
 
-    // Salvar a iteração
     fprintf(file, "%d,%d,%.3f\n", iteracao, distancia_total, tempo_decorrido);
     fflush(file);
 }
 
-// Função para calcular a distância Euclidiana entre dois pontos 3D
 double distance(double point1[3], double point2[3])
 {
     return sqrt(pow(point1[0] - point2[0], 2) + pow(point1[1] - point2[1], 2) + pow(point1[2] - point2[2], 2));
 }
 
-// Função para carregar os pontos a partir de um arquivo .txt
 int load_points(const char *filename, double **points)
 {
     FILE *file = fopen(filename, "r");
@@ -84,14 +77,12 @@ void ant_colony_optimization(double **points, int n_ants, int n_iterations, doub
     clock_t inicio = clock();
     srand(42);
 
-    // Alocar dinamicamente a matriz de feromônios
     double **pheromone = (double **)malloc(n_points * sizeof(double *));
     for (int i = 0; i < n_points; i++)
     {
         pheromone[i] = (double *)malloc(n_points * sizeof(double));
     }
 
-    // Alocar dinamicamente a matriz de caminhos
     int **paths = (int **)malloc(n_ants * sizeof(int *));
     for (int i = 0; i < n_ants; i++)
     {
@@ -102,7 +93,6 @@ void ant_colony_optimization(double **points, int n_ants, int n_iterations, doub
     double best_path_length = DBL_MAX;
     int best_path[n_points];
 
-    // Inicializa a matriz de feromônios
     for (int i = 0; i < n_points; i++)
     {
         for (int j = 0; j < n_points; j++)
@@ -113,28 +103,23 @@ void ant_colony_optimization(double **points, int n_ants, int n_iterations, doub
 
     for (int iteration = 0; iteration < n_iterations; iteration++)
     {
-        // Para cada formiga
         for (int ant = 0; ant < n_ants; ant++)
         {
             int visited[n_points + 1];
-            memset(visited, 0, sizeof(visited)); // Zera o array para garantir que todos os pontos estão marcados como não visitados.
+            memset(visited, 0, sizeof(visited));
 
-            // Inicializar cada formiga em um ponto aleatório ou único
-            int current_point = ant % n_points; // Exemplo: Distribuição cíclica entre os pontos
-            // Para aleatoriedade, use: int current_point = rand() % n_points;
+            int current_point = ant % n_points;
 
-            visited[current_point] = 1; // Marca o ponto inicial como visitado
-            paths[ant][0] = current_point; // Define o ponto inicial no caminho da formiga
+            visited[current_point] = 1;
+            paths[ant][0] = current_point;
             double path_length = 0;
 
-            // Constrói o caminho para a formiga
             for (int step = 1; step < n_points; step++)
             {
                 int unvisited[n_points];
                 int n_unvisited = 0;
                 double probabilities[n_points];
 
-                // Encontra pontos não visitados
                 for (int i = 0; i < n_points; i++)
                 {
                     if (!visited[i])
@@ -144,7 +129,6 @@ void ant_colony_optimization(double **points, int n_ants, int n_iterations, doub
                 }
 
                 double total_prob = 0;
-                // Calcula probabilidades
                 for (int i = 0; i < n_unvisited; i++)
                 {
                     int unvisited_point = unvisited[i];
@@ -153,13 +137,11 @@ void ant_colony_optimization(double **points, int n_ants, int n_iterations, doub
                     total_prob += probabilities[i];
                 }
 
-                // Normaliza as probabilidades
                 for (int i = 0; i < n_unvisited; i++)
                 {
                     probabilities[i] /= total_prob;
                 }
 
-                // Escolhe o próximo ponto baseado nas probabilidades
                 double r = (double)rand() / RAND_MAX;
                 double cumulative_prob = 0;
                 int next_point = -1;
@@ -174,13 +156,11 @@ void ant_colony_optimization(double **points, int n_ants, int n_iterations, doub
                     }
                 }
 
-                // Seleciona o último ponto se nenhum for escolhido
                 if (next_point == -1)
                 {
                     next_point = unvisited[n_unvisited - 1];
                 }
 
-                // Atualiza o caminho e a distância total
                 paths[ant][step] = next_point;
                 path_length += distance(points[current_point], points[next_point]);
                 visited[next_point] = 1;
@@ -195,12 +175,9 @@ void ant_colony_optimization(double **points, int n_ants, int n_iterations, doub
                 }
             }
 
-            // Fecha o ciclo retornando ao ponto 0
             path_length += distance(points[current_point], points[0]);
-            // paths[ant][n_points - 1] = 0; // Retorna ao ponto 0
             path_lengths[ant] = path_length;
 
-            // Verifica se este é o melhor caminho encontrado
             if (path_length < best_path_length)
             {
                 best_path_length = path_length;
@@ -211,7 +188,6 @@ void ant_colony_optimization(double **points, int n_ants, int n_iterations, doub
             }
         }
 
-        // Atualiza os feromônios com evaporação
         for (int i = 0; i < n_points; i++)
         {
             for (int j = 0; j < n_points; j++)
@@ -220,7 +196,6 @@ void ant_colony_optimization(double **points, int n_ants, int n_iterations, doub
             }
         }
 
-        // Adiciona o feromônio com base nos novos caminhos
         for (int ant = 0; ant < n_ants; ant++)
         {
             for (int i = 0; i < n_points - 1; i++)
@@ -236,7 +211,6 @@ void ant_colony_optimization(double **points, int n_ants, int n_iterations, doub
         save_log(log_file, iteration + 1, best_path_length, tempo_decorrido);
     }
 
-    // Libera a memória alocada dinamicamente
     for (int i = 0; i < n_points; i++)
     {
         free(pheromone[i]);
@@ -250,7 +224,6 @@ void ant_colony_optimization(double **points, int n_ants, int n_iterations, doub
     free(paths);
     free(path_lengths);
 
-    // Imprime o melhor caminho encontrado
     printf("[");
     for (int i = 0; i < n_points; i++)
     {
@@ -287,13 +260,11 @@ int main(int argc, char *argv[])
     {
         points[i] = (double *)malloc(3 * sizeof(double));
     }
-    // Carrega os pontos a partir do arquivo
     if (load_points(nomeArquivo, points) != 0)
     {
-        return 1; // Sai se houver erro ao carregar os pontos
+        return 1;
     }
 
-    // Executa a otimização
     ant_colony_optimization(points, n_ants, n_iterations, alpha, beta, evaporation_rate, Q, log_file);
 
     for (int i = 0; i < n_points; i++)
