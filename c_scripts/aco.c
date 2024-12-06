@@ -72,7 +72,7 @@ int load_points(const char *filename, double **points)
     return 0;
 }
 
-void ant_colony_optimization(double **points, int n_ants, int n_iterations, double alpha, double beta, double evaporation_rate, double Q, FILE *log_file)
+void ant_colony_optimization(double **dist_matrix, int n_ants, int n_iterations, double alpha, double beta, double evaporation_rate, double Q, FILE *log_file)
 {
     clock_t inicio = clock();
     srand(42);
@@ -132,7 +132,7 @@ void ant_colony_optimization(double **points, int n_ants, int n_iterations, doub
                 for (int i = 0; i < n_unvisited; i++)
                 {
                     int unvisited_point = unvisited[i];
-                    double dist = distance(points[current_point], points[unvisited_point]);
+                    double dist = dist_matrix[current_point][unvisited_point];
                     probabilities[i] = pow(pheromone[current_point][unvisited_point], alpha) / pow(dist, beta);
                     total_prob += probabilities[i];
                 }
@@ -162,7 +162,7 @@ void ant_colony_optimization(double **points, int n_ants, int n_iterations, doub
                 }
 
                 paths[ant][step] = next_point;
-                path_length += distance(points[current_point], points[next_point]);
+                path_length += dist_matrix[current_point][next_point];
                 visited[next_point] = 1;
                 current_point = next_point;
             }
@@ -175,7 +175,7 @@ void ant_colony_optimization(double **points, int n_ants, int n_iterations, doub
                 }
             }
 
-            path_length += distance(points[current_point], points[0]);
+            path_length += dist_matrix[current_point][paths[ant][0]];
             path_lengths[ant] = path_length;
 
             if (path_length < best_path_length)
@@ -246,32 +246,52 @@ int main(int argc, char *argv[])
     const char *str_beta = argv[6];
     char *endptr_beta;
     beta = strtof(str_beta, &endptr_beta);
-    const char *str_eva = argv[7];
-    char *endptr_eva;
-    evaporation_rate = strtof(str_eva, &endptr_eva);
-    const char *str_q = argv[8];
-    char *endptr_q;
-    Q = strtof(str_q, &endptr_q);
-
-    FILE *log_file = create_log_file();
+    evaporation_rate = strtof(argv[7], NULL);
+    Q = strtof(argv[8], NULL);
 
     double **points = (double **)malloc(n_points * sizeof(double *));
     for (int i = 0; i < n_points; i++)
     {
         points[i] = (double *)malloc(3 * sizeof(double));
     }
+
     if (load_points(nomeArquivo, points) != 0)
     {
-        return 1;
+        printf("Erro ao carregar os pontos.\n");
+        return EXIT_FAILURE;
     }
 
-    ant_colony_optimization(points, n_ants, n_iterations, alpha, beta, evaporation_rate, Q, log_file);
+    double **dist_matrix = (double **)malloc(n_points * sizeof(double *));
+    for (int i = 0; i < n_points; i++)
+    {
+        dist_matrix[i] = (double *)malloc(n_points * sizeof(double));
+    }
+
+    for (int i = 0; i < n_points; i++)
+    {
+        for (int j = 0; j <= i; j++)
+        {
+            if (i == j)
+                dist_matrix[i][j] = 0.0; 
+            else
+            {
+                dist_matrix[i][j] = distance(points[i], points[j]);
+                dist_matrix[j][i] = dist_matrix[i][j];
+            }
+        }
+    }
+
+    FILE *log_file = create_log_file();
+    ant_colony_optimization(dist_matrix, n_ants, n_iterations, alpha, beta, evaporation_rate, Q, log_file);
 
     for (int i = 0; i < n_points; i++)
     {
         free(points[i]);
+        free(dist_matrix[i]);
     }
     free(points);
+    free(dist_matrix);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
+
