@@ -1,17 +1,17 @@
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
+from matplotlib import cm
+from mpl_toolkits.mplot3d.art3d import Line3DCollection
 from mpl_toolkits.mplot3d import Axes3D
 from fpdf import FPDF
 import customtkinter as ctk
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 import numpy as np
 import subprocess
 import threading
 import os
 import platform
 import time
-import re
 import csv
 
 
@@ -30,7 +30,8 @@ class AnimatedGraphApp:
         ctk.set_default_color_theme("dark-blue")  # Tema azul escuro
 
         # Definir o tamanho da janela para Full HD
-        self.root.geometry("1600x918") #ratio 400:217
+        self.root.geometry("1600x918")  # ratio 400:217
+        self.root.resizable(False, False)  # Impedir redimensionamento (largura e altura)
 
         # Configuração do layout
         self.frame_left = ctk.CTkFrame(self.root)
@@ -67,73 +68,73 @@ class AnimatedGraphApp:
         # Hiperparâmetros para Algoritmo Genético
         self.mutacao_label = ctk.CTkLabel(self.frame_left, text="Taxa de Mutação:")
         self.mutacao_label.pack(pady=5)
-        self.mutacao_slider = ctk.CTkSlider(self.frame_left, from_=0.00, to=1.00, number_of_steps=100, command=self.update_mutacao)
+        self.mutacao_slider = ctk.CTkSlider(self.frame_left, from_=0.00, to=1.00, number_of_steps=100, command=self.update_mutacao, width=150)
         self.mutacao_slider.pack(pady=5)
-        self.mutacao_var = ctk.StringVar(value="0.08")
+        self.mutacao_var = ctk.StringVar(value="0.15")
         self.mutacao_entry = ctk.CTkEntry(self.frame_left, textvariable=self.mutacao_var)
         self.mutacao_entry.pack(pady=5)
 
         self.populacao_label = ctk.CTkLabel(self.frame_left, text="Tamanho da População:")
         self.populacao_label.pack(pady=5)
-        self.populacao_var = ctk.StringVar(value="30")
+        self.populacao_var = ctk.StringVar(value="250")
         self.populacao_entry = ctk.CTkEntry(self.frame_left, textvariable=self.populacao_var)
         self.populacao_entry.pack(pady=5)
 
         self.iteracoes_label = ctk.CTkLabel(self.frame_left, text="Número de Iterações:")
         self.iteracoes_label.pack(pady=5)
-        self.iteracoes_var = ctk.StringVar(value="10000")
+        self.iteracoes_var = ctk.StringVar(value="7000")
         self.iteracoes_entry = ctk.CTkEntry(self.frame_left, textvariable=self.iteracoes_var)
         self.iteracoes_entry.pack(pady=5)
 
         # Hiperparâmetros para Algoritmo de Colônia de Formigas (ACO)
         self.n_ants_label = ctk.CTkLabel(self.frame_left, text="Número de Formigas:")
         self.n_ants_label.pack(pady=5)
-        self.n_ants_var = ctk.StringVar(value="50")  # Cria um StringVar com o valor padrão
+        self.n_ants_var = ctk.StringVar(value="100")  # Cria um StringVar com o valor padrão
         self.n_ants_entry = ctk.CTkEntry(self.frame_left, textvariable=self.n_ants_var)
         self.n_ants_entry.pack(pady=5)
 
         self.n_iterations_label = ctk.CTkLabel(self.frame_left, text="Número de Iterações:")
         self.n_iterations_label.pack(pady=5)
-        self.n_iterations_var = ctk.StringVar(value="200")  # Cria um StringVar com o valor padrão
+        self.n_iterations_var = ctk.StringVar(value="50")  # Cria um StringVar com o valor padrão
         self.n_iterations_entry = ctk.CTkEntry(self.frame_left, textvariable=self.n_iterations_var)
         self.n_iterations_entry.pack(pady=5)
 
         self.alpha_label = ctk.CTkLabel(self.frame_left, text="Valor de Alpha:")
         self.alpha_label.pack(pady=5)
-        self.alpha_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=3.0, number_of_steps=100, command=self.update_alpha)
+        self.alpha_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=3.0, number_of_steps=100, command=self.update_alpha, width=150)
         self.alpha_slider.pack(pady=5)
-        self.alpha_var = ctk.StringVar(value="1.00")
+        self.alpha_var = ctk.StringVar(value="1.60")
         self.alpha_entry = ctk.CTkEntry(self.frame_left, textvariable=self.alpha_var)
         self.alpha_entry.pack(pady=5)
 
         self.beta_label = ctk.CTkLabel(self.frame_left, text="Valor de Beta:")
         self.beta_label.pack(pady=5)
-        self.beta_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=5.0, number_of_steps=100, command=self.update_beta)
+        self.beta_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=5.0, number_of_steps=100, command=self.update_beta, width=150)
         self.beta_slider.pack(pady=5)
-        self.beta_var = ctk.StringVar(value="2.50")
+        self.beta_var = ctk.StringVar(value="2.00")
         self.beta_entry = ctk.CTkEntry(self.frame_left, textvariable=self.beta_var)
         self.beta_entry.pack(pady=5)
 
         self.evaporation_label = ctk.CTkLabel(self.frame_left, text="Taxa de Evaporação:")
         self.evaporation_label.pack(pady=5)
-        self.evaporation_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=1.0, number_of_steps=100, command=self.update_evaporation)
+        self.evaporation_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=1.0, number_of_steps=100, command=self.update_evaporation, width=150)
         self.evaporation_slider.pack(pady=5)
-        self.evaporation_var = ctk.StringVar(value="0.30")
+        self.evaporation_var = ctk.StringVar(value="0.70")
         self.evaporation_entry = ctk.CTkEntry(self.frame_left, textvariable=self.evaporation_var)
         self.evaporation_entry.pack(pady=5)
 
         self.q_label = ctk.CTkLabel(self.frame_left, text="Valor de Q:")
         self.q_label.pack(pady=5)
-        self.q_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=10.0, number_of_steps=100, command=self.update_q)
+        self.q_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=10.0, number_of_steps=100, command=self.update_q, width=150)
         self.q_slider.pack(pady=5)
-        self.q_var = ctk.StringVar(value="1.00")
+        self.q_var = ctk.StringVar(value="15.00")
         self.q_entry = ctk.CTkEntry(self.frame_left, textvariable=self.q_var)
         self.q_entry.pack(pady=5)
 
         # Hiperparâmetros para GRASP
         self.grasp_alpha_label = ctk.CTkLabel(self.frame_left, text="Alpha:")
         self.grasp_alpha_label.pack(pady=5)
-        self.grasp_alpha_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=1.0, number_of_steps=100, command=self.update_grasp_alpha)
+        self.grasp_alpha_slider = ctk.CTkSlider(self.frame_left, from_=0.0, to=1.0, number_of_steps=100, command=self.update_grasp_alpha, width=150)
         self.grasp_alpha_slider.pack(pady=5)
         self.grasp_alpha_var = ctk.StringVar(value="0.25")
         self.grasp_alpha_entry = ctk.CTkEntry(self.frame_left, textvariable=self.grasp_alpha_var)
@@ -162,12 +163,6 @@ class AnimatedGraphApp:
         self.result_label = ctk.CTkLabel(self.frame_right, text="Resultados")
         self.result_label.pack(pady=5)
         
-        # self.caminho_label = ctk.CTkLabel(self.frame_right, text="Caminho:")
-        # self.caminho_label.pack(pady=5)
-        # self.caminho_text = ctk.CTkTextbox(self.frame_right, height=300, width=400)
-        # self.caminho_text.pack(pady=5)
-        # self.caminho_text.insert(ctk.END, self.caminho)
-        
         self.distancia_label = ctk.CTkLabel(self.frame_right, text="Distância Total:")
         self.distancia_label.pack(pady=5)
         self.distancia_text = ctk.CTkTextbox(self.frame_right, height=10, width=150)
@@ -186,7 +181,6 @@ class AnimatedGraphApp:
         self.proximidade_caminho_o_text.pack(pady=5)
         self.proximidade_caminho_o_text.insert(ctk.END, f"{self.prox_caminho_o:.2f} %")
 
-        # Elementos da interface
         self.progress_label = ctk.CTkLabel(self.frame_right, text="Progresso do Algoritmo: ", font=("Arial", 16))
         self.progress_label.pack(pady=10)
 
@@ -256,7 +250,7 @@ class AnimatedGraphApp:
             case 10001:
                 return 276750
             case 37860:
-                return 28235453  
+                return 28235453 
             case 109400:
                 return 13750874
             
@@ -369,23 +363,30 @@ class AnimatedGraphApp:
     def plot_best_path_checkbox_command(self):
         if(self.plot_best_path_checkbox.get() == 1):
             dataset_tour = "star100_tour.txt"
+
+            grossura_linha = 2
             
             match self.dataset_select.get():
                 case "100 Estrelas":
                     dataset_tour = "star100_tour.txt"
                     dataset_name = "star100.xyz.txt"
+                    grossura_linha = 2
                 case "1.000 Estrelas":
                     dataset_tour = "star1k_tour.txt"
                     dataset_name = "star1k.xyz.txt"
+                    grossura_linha = 2
                 case "10.000 Estrelas":
                     dataset_tour = "star10k_tour.txt"
                     dataset_name = "star10k.xyz.txt"
+                    grossura_linha = 1
                 case "37.859 Estrelas":
                     dataset_tour = "kj37859_tour.txt"
                     dataset_name = "kj37859.xyz.txt"
+                    grossura_linha = 0.5
                 case "109.399 Estrelas":
                     dataset_tour = "hyg109399_tour.txt"
                     dataset_name = "hyg109399.xyz.txt"
+                    grossura_linha = 0.1
         
             # Nome do arquivo do melhor caminho (alterar conforme necessário)
             best_path_file = "best_paths/" + dataset_tour
@@ -396,6 +397,7 @@ class AnimatedGraphApp:
 
             for i in range(len(best_path)):
                 best_path[i] = best_path[i] - 1
+            best_path.append(0)
             
             # Adicionar o melhor caminho ao gráfico
             self.ax.clear()
@@ -418,7 +420,13 @@ class AnimatedGraphApp:
                 coordenadas_y[i] = coordenadas[best_path[i]][2]
                 coordenadas_z[i] = coordenadas[best_path[i]][3]
             
-            self.ax.plot(coordenadas_x, coordenadas_y, coordenadas_z, color='red', linewidth=0.5)
+            self.ax.plot(coordenadas_x, coordenadas_y, coordenadas_z, color='red', linewidth=grossura_linha)
+
+            RADIUS = (max(coordenadas_x.max(), coordenadas_y.max(), coordenadas_z.max())) * 1.33
+
+            self.ax.set_xlim3d(-RADIUS / 2, RADIUS / 2)
+            self.ax.set_zlim3d(-RADIUS / 2, RADIUS / 2)
+            self.ax.set_ylim3d(-RADIUS / 2, RADIUS / 2)
 
             # Atualizar o canvas com o novo gráfico
             self.canvas.draw()
@@ -585,7 +593,7 @@ class AnimatedGraphApp:
                 case "Greedy Randomized Adaptive Search Procedure (GRASP)":
                     algoritmo_sigla = "grasp"
                     algoritmo = os.path.join("c_scripts", algoritmo_sigla + bin_sulfix)
-                    args = [algoritmo, dataset_name, self.grasp_iterations_var.get(), self.grasp_alpha_var.get()]
+                    args = [algoritmo, dataset_name, dataset_size, self.grasp_iterations_var.get(), self.grasp_alpha_var.get()]
                     iteracoes_selecionadas = self.grasp_iterations_var.get()
 
             print(f"algoritmo: {algoritmo} dataset: {dataset_name} dataset_size: {dataset_size}")
@@ -594,6 +602,7 @@ class AnimatedGraphApp:
             start_time = time.time()
 
             # Executa o processo
+            print(args)
             process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
             match algoritmo_sigla:
@@ -665,7 +674,7 @@ class AnimatedGraphApp:
 
     def plota_caminho(self, caminho):
         tam = len(caminho)
-        self.ax.set_facecolor("#2E2E2E")
+        self.ax.set_facecolor("#000000")
         self.ax.tick_params(axis='x', colors='#E0E0E0')
         self.ax.tick_params(axis='y', colors='#E0E0E0')
         self.ax.tick_params(axis='z', colors='#E0E0E0')
@@ -674,38 +683,71 @@ class AnimatedGraphApp:
         self.ax.zaxis.label.set_color('#E0E0E0')
         self.ax.grid(False)
 
-        coordenadas_plot = np.arange(((tam) * 3), dtype=float)
-        coordenadas_plot = coordenadas_plot.reshape(tam, 3)
-
         coordenadas_x = np.arange(tam, dtype=float)
         coordenadas_y = np.arange(tam, dtype=float)
         coordenadas_z = np.arange(tam, dtype=float)
 
+        grossura_linha = 2;
+
         match tam:
             case 101:
-                coordenadas = self.open_dataset(os.path.join("datasets","star100.xyz.txt"))
+                coordenadas = self.open_dataset(os.path.join("datasets", "star100.xyz.txt"))
+                grossura_linha = 1;
             case 1001:
-                coordenadas = self.open_dataset(os.path.join("datasets","star1k.xyz.txt"))
+                coordenadas = self.open_dataset(os.path.join("datasets", "star1k.xyz.txt"))
+                grossura_linha = 1;
             case 10001:
-                coordenadas = self.open_dataset(os.path.join("datasets","star10k.xyz.txt"))
+                coordenadas = self.open_dataset(os.path.join("datasets", "star10k.xyz.txt"))
+                grossura_linha = 0.5;
             case 37860:
-                coordenadas = self.open_dataset(os.path.join("datasets","kj37859.xyz.txt"))
+                coordenadas = self.open_dataset(os.path.join("datasets", "kj37859.xyz.txt"))
+                grossura_linha = 0.1;
             case 109400:
-                coordenadas = self.open_dataset(os.path.join("datasets","hyg109399.xyz.txt"))
+                coordenadas = self.open_dataset(os.path.join("datasets", "hyg109399.xyz.txt"))
+                grossura_linha = 0.1;
 
         for i in range(tam):
             coordenadas_x[i] = coordenadas[caminho[i]][1]
             coordenadas_y[i] = coordenadas[caminho[i]][2]
             coordenadas_z[i] = coordenadas[caminho[i]][3]
 
-        # self.ax.scatter(coordenadas_x[1:tam - 1], coordenadas_y[1:tam - 1],
-        #             coordenadas_z[1:tam - 1], c='red', s=0.01)
+        # Criar gradiente de cores do vermelho ao lilás (não cíclico)
+        colormap = cm.hsv
+        scaled_indices = np.linspace(0, 0.85, tam)  # Mapeia o gradiente de 0 (vermelho) a 0.83 (violeta)
+        colors = colormap(scaled_indices)  # Aplica o colormap ao intervalo ajustado
 
-        self.ax.plot(coordenadas_x, coordenadas_y, coordenadas_z, color='yellow', linewidth=0.25)
 
+        # Scatter plot com gradiente de cores
+        if tam < 10000:
+            self.ax.scatter(
+                coordenadas_x[1:tam - 1],
+                coordenadas_y[1:tam - 1],
+                coordenadas_z[1:tam - 1],
+                c=colors[1:tam - 1],
+                s=8
+            )
+
+        # Criar segmentos de linha para aplicar o gradiente
+        segments = [
+            [[coordenadas_x[i], coordenadas_y[i], coordenadas_z[i]],
+            [coordenadas_x[i + 1], coordenadas_y[i + 1], coordenadas_z[i + 1]]]
+            for i in range(tam - 1)
+        ]
+
+        # Adicionar os segmentos com o gradiente de cores
+        linha = Line3DCollection(segments, colors=colors[:-1], linewidth=grossura_linha)
+        self.ax.add_collection3d(linha)
+
+        # Destacar o ponto inicial (nó origem)
         self.ax.scatter(0, 0, 0, c='orange', s=15)
+
+        RADIUS = max(coordenadas_x.max(), coordenadas_y.max(), coordenadas_z.max()) * 1.33
+        self.ax.set_xlim3d(-RADIUS / 2, RADIUS / 2)
+        self.ax.set_zlim3d(-RADIUS / 2, RADIUS / 2)
+        self.ax.set_ylim3d(-RADIUS / 2, RADIUS / 2)
+
         return self.fig, self.ax
-    
+        
     def open_dataset(self, dataset_neme):
         matriz = []
         with open(dataset_neme, 'r') as arquivo:

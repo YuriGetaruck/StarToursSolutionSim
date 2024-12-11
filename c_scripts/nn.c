@@ -4,7 +4,6 @@
 #include <math.h>
 #include <time.h>
 
-// Estrutura para representar uma coordenada
 typedef struct
 {
     int id;
@@ -15,14 +14,11 @@ typedef struct
 
 FILE *create_log_file(int tamanho)
 {
-    // Nome do diretório
     const char *directory = "c_scripts/logs";
 
-    // Buffer para o nome do arquivo
     char filename[100];
     sprintf(filename, "%s/log_nn_%d.txt", directory, tamanho);
 
-    // Criar e abrir o arquivo
     FILE *file = fopen(filename, "w");
     if (file == NULL)
     {
@@ -33,7 +29,6 @@ FILE *create_log_file(int tamanho)
     return file;
 }
 
-// Função para salvar informações no arquivo de log
 void save_log(FILE *file, int iteracao, double distancia_total, double tempo_decorrido)
 {
     if (file == NULL)
@@ -46,7 +41,6 @@ void save_log(FILE *file, int iteracao, double distancia_total, double tempo_dec
     fflush(file);
 }
 
-// Função para calcular a distância entre dois pontos em 3D
 float calcularDistancia(CoordenadaEstrela ponto1, CoordenadaEstrela ponto2)
 {
     float distancia;
@@ -54,7 +48,6 @@ float calcularDistancia(CoordenadaEstrela ponto1, CoordenadaEstrela ponto2)
     return distancia;
 }
 
-// Função para criar a matriz de distâncias
 float **criarMatrizDistancias(CoordenadaEstrela *coordenadas, int tamanho)
 {
     float **matrizDistancias = (float **)malloc(tamanho * sizeof(float *));
@@ -73,16 +66,16 @@ float **criarMatrizDistancias(CoordenadaEstrela *coordenadas, int tamanho)
             exit(EXIT_FAILURE);
         }
 
-        for (int j = 0; j <= i; j++)  // Apenas abaixo ou na diagonal principal
+        for (int j = 0; j <= i; j++)
         {
             if (i == j)
             {
-                matrizDistancias[i][j] = 0.0f;  // Distância para si mesmo é zero
+                matrizDistancias[i][j] = 0.0f;
             }
             else
             {
                 matrizDistancias[i][j] = calcularDistancia(coordenadas[i], coordenadas[j]);
-                matrizDistancias[j][i] = matrizDistancias[i][j];  // Preenche a parte superior
+                matrizDistancias[j][i] = matrizDistancias[i][j];
             }
         }
     }
@@ -90,7 +83,6 @@ float **criarMatrizDistancias(CoordenadaEstrela *coordenadas, int tamanho)
     return matrizDistancias;
 }
 
-// Função para liberar a matriz de distâncias
 void liberarMatrizDistancias(float **matrizDistancias, int tamanho)
 {
     for (int i = 0; i < tamanho; i++)
@@ -100,20 +92,6 @@ void liberarMatrizDistancias(float **matrizDistancias, int tamanho)
     free(matrizDistancias);
 }
 
-// Função para percorrer o vetor de coordenadas e calcular a distância total entre estrelas consecutivas
-float calcularDistanciaTotal(CoordenadaEstrela *coordenadas, int tamanho)
-{
-    float distanciaTotal = 0.0;
-    for (int i = 0; i < tamanho - 1; i += 2)
-    {
-        distanciaTotal += calcularDistancia(coordenadas[i], coordenadas[i + 1]);
-    }
-
-    distanciaTotal += calcularDistancia(coordenadas[tamanho - 1], coordenadas[0]);
-    return distanciaTotal;
-}
-
-// Função para encontrar o próximo ponto mais próximo não visitado
 int encontrarProximoPontoMaisProximo(float **matrizDistancias, bool *visitado, int pontoAtual, int tamanho)
 {
     int proximoPonto = -1;
@@ -135,8 +113,6 @@ int encontrarProximoPontoMaisProximo(float **matrizDistancias, bool *visitado, i
     return proximoPonto;
 }
 
-// ALGORITMO GULOSO
-// Função para encontrar a rota usando o algoritmo guloso
 void algoritmoGulosoVizinhoMaisProximo(CoordenadaEstrela *coordenadas, float **matrizDistancias, int tamanho, int *caminho, float *distanciaTotal, clock_t inicio, FILE *log_file)
 {
     bool *visitado = (bool *)calloc(tamanho, sizeof(bool));
@@ -153,7 +129,7 @@ void algoritmoGulosoVizinhoMaisProximo(CoordenadaEstrela *coordenadas, float **m
         caminho[i] = coordenadas[proximoPonto].id;
         *distanciaTotal += matrizDistancias[pontoAtual][proximoPonto];
         visitado[proximoPonto] = true;
-        pontoAtual = proximoPonto; // Atualizando o ponto atual para o próximo ponto selecionado
+        pontoAtual = proximoPonto; 
         clock_t autal = clock();
         double tempo_decorrido = (double)(autal - inicio) / CLOCKS_PER_SEC;
         save_log(log_file, i, *distanciaTotal, tempo_decorrido);
@@ -168,7 +144,6 @@ void algoritmoGulosoVizinhoMaisProximo(CoordenadaEstrela *coordenadas, float **m
     free(visitado);
 }
 
-// Função para extrair coordenadas
 CoordenadaEstrela *lerCoordenadas(const char *nomeArquivo, int *tamanho)
 {
     FILE *arquivo = fopen(nomeArquivo, "r");
@@ -178,7 +153,6 @@ CoordenadaEstrela *lerCoordenadas(const char *nomeArquivo, int *tamanho)
         exit(EXIT_FAILURE);
     }
 
-    // Contar o número de linhas no arquivo
     int linhas = 0;
     float dummy_x, dummy_y, dummy_z;
     while (fscanf(arquivo, "%f %f %f", &dummy_x, &dummy_y, &dummy_z) == 3)
@@ -186,9 +160,8 @@ CoordenadaEstrela *lerCoordenadas(const char *nomeArquivo, int *tamanho)
         linhas++;
     }
 
-    rewind(arquivo); // Voltar ao início do arquivo
+    rewind(arquivo);
 
-    // Alocar dinamicamente o vetor de coordenadas
     CoordenadaEstrela *coordenadas = (CoordenadaEstrela *)malloc(linhas * sizeof(CoordenadaEstrela));
     if (coordenadas == NULL)
     {
@@ -196,7 +169,6 @@ CoordenadaEstrela *lerCoordenadas(const char *nomeArquivo, int *tamanho)
         exit(EXIT_FAILURE);
     }
 
-    // Ler as coordenadas e armazenar no vetor
     for (int i = 0; i < linhas; i++)
     {
         if (fscanf(arquivo, "%f %f %f", &coordenadas[i].x, &coordenadas[i].y, &coordenadas[i].z) != 3)
@@ -209,10 +181,8 @@ CoordenadaEstrela *lerCoordenadas(const char *nomeArquivo, int *tamanho)
 
     fclose(arquivo);
 
-    // Definir o tamanho do vetor
     *tamanho = linhas;
 
-    // Retornar o vetor de coordenadas
     return coordenadas;
 }
 
@@ -220,7 +190,6 @@ int main(int argc, char *argv[])
 {
     clock_t inicio = clock();
 
-    // Verifica se o nome do arquivo foi passado como argumento
     if (argc < 2)
     {
         fprintf(stderr, "Uso: %s <nomeArquivo>\n", argv[0]);
@@ -254,7 +223,6 @@ int main(int argc, char *argv[])
 
     algoritmoGulosoVizinhoMaisProximo(coordenadas, matrizDistancias, tamanho, caminho, &distanciaGuloso, inicio, log_file);
 
-    // Imprime o caminho
     printf("[");
     for (int i = 0; i < tamanho; i++)
     {

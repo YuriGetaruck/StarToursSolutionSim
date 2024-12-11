@@ -1,0 +1,1 @@
+Running ACO with dataset_size=100, n_ants=30, alpha=0.10, beta=1.00, evaporation=0.10, q=1, iterations=200

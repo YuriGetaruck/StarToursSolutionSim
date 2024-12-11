@@ -361,8 +361,6 @@ void ga(const char *nome_arquivo)
     float **distances = criarMatrizDistancias(points, n);
     initialize_population(population, distances);
 
-    double best_fitness[iterations];
-
     for (int i = 0; i < iterations; i++)
     {
         if (evolve_population(population, distances))
@@ -371,7 +369,6 @@ void ga(const char *nome_arquivo)
         }
 
         Individual best_individual = find_best_individual(population);
-        best_fitness[i] = best_individual.fitness;
 
         clock_t atual = clock();
         double tempo_decorrido = (double)(atual - inicio) / CLOCKS_PER_SEC;
