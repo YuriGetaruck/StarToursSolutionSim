@@ -2,10 +2,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Configurações gerais
-optimal_distance = 1795
-random_distance = 6971.13
-nn_distance = 2108.45
-nn_time = 0.001
+optimal_distance = 22227
+random_distance = 195486.71
+nn_distance = 25396.32
+nn_time = 0.048
 
 # Função para carregar os dados
 def load_data(filename, has_iterations=True):
@@ -126,17 +126,10 @@ def plot_time_to_best_path(data_dict):
     plt.savefig("tempo_ate_melhor_caminho.png")
     plt.show()
 
-
 # Processando os arquivos
-aco_data = load_data("log_aco_100_100_1.60_2.00_0.70_15.00_200.txt")
-ga_data = load_data("log_ga_100_0.15_250_7000.txt")
-grasp_data = load_data("log_grasp_100_0.25_4000.txt")
-# nn_data = load_data("log_nn_100.txt", has_iterations=False)
-
-# Processando os arquivos
-aco_data = load_data("log_aco_100_100_1.60_2.00_0.70_15.00_200.txt")
-ga_data = load_data("log_ga_100_0.15_250_7000.txt")
-grasp_data = load_data("log_grasp_100_0.25_4000.txt")
+aco_data = load_data("log_aco_1000_100_1.60_2.00_0.70_15.00_100000.txt")
+ga_data = load_data("log_ga_1000_0.15_250_1000000.txt")
+grasp_data = load_data("log_grasp_1000_0.25_1000000.txt")
 # nn_data = load_data("log_nn_100.txt", has_iterations=False)
 
 # Calculando métricas
@@ -157,3 +150,4 @@ data_dict = {
 plot_comparative_graphs(data_dict, optimal_distance)
 plot_bar_comparison(data_dict, optimal_distance, random_distance)
 plot_time_to_best_path(data_dict)
+
