@@ -37,7 +37,7 @@ def plot_comparative_graphs(data_dict, optimal_distance):
     plt.savefig("Taxa de melhoria x Tempo de execução.png")
     plt.show()
 
-    plt.figure(figsize=(24, 5))
+    plt.figure(figsize=(12, 5))
 
     # Gráfico: Taxa de convergência x Tempo de execução
     for algorithm_name, data in data_dict.items():
@@ -80,21 +80,25 @@ def plot_bar_comparison(data_dict, optimal_distance, random_distance):
     optimal_distances = [optimal_distance] * len(algorithms)
     random_distances = [random_distance] * len(algorithms)
     nn_distances = [nn_distance] * len(algorithms)
-
-    # Gráfico de barras
+    
+    # Gráfico de barras com espaçamento entre os grupos de 4 em 4
     x = range(len(algorithms))
-    width = 0.25
+    width = 0.2  # Largura de cada barra
+    group_spacing = 0.4  # Espaçamento entre os grupos de barras
 
     plt.figure(figsize=(10, 6))
-    plt.bar(x, best_distances, width=width, label="Melhor Resultado", color="blue")
-    plt.bar([p + width for p in x], optimal_distances, width=width, label="Distância Ótima", color="green")
-    plt.bar([p + 2 * width for p in x], nn_distances, width=width, label="Distância NN", color="purple")
-    plt.bar([p + 3 * width for p in x], random_distances, width=width, label="Distância Aleatória", color="red")
+    plt.bar([p - 1.5 * width for p in x], best_distances, width=width, label="Melhor Resultado", color="blue")
+    plt.bar([p - 0.5 * width for p in x], optimal_distances, width=width, label="Distância Ótima", color="green")
+    plt.bar([p + 0.5 * width for p in x], nn_distances, width=width, label="Distância NN", color="purple")
+    plt.bar([p + 1.5 * width for p in x], random_distances, width=width, label="Distância Aleatória", color="red")
+
+    # Ajuste do espaçamento entre grupos
+    x_positions = [p * (4 * width + group_spacing) for p in x]
 
     plt.xlabel("Algoritmos")
     plt.ylabel("Distância")
     plt.title("Comparação de Distâncias Obtidas")
-    plt.xticks([p + width for p in x], algorithms)
+    plt.xticks(x_positions, algorithms)  # Atualiza os rótulos para refletirem o espaçamento
     plt.legend()
     plt.grid(axis="y", linestyle="--", alpha=0.7)
 
@@ -110,9 +114,7 @@ def plot_time_to_best_path(data_dict):
     }
 
     algorithms = list(best_times.keys())
-    algorithms.append("NN")
     times = list(best_times.values())
-    times.append(nn_time)
 
     # Gráfico de barras
     plt.figure(figsize=(10, 6))
