@@ -77,9 +77,10 @@ def plot_comparative_graphs(data_dict, optimal_distance):
     plt.title("Distância Total x Tempo de Execução", fontsize=14)
     plt.xlabel("Tempo de Execução (s)", fontsize=12)
     plt.ylabel("Distância Total", fontsize=12)
-    plt.grid(visible=True, linestyle='--', alpha=0.7)
+    plt.grid(visible=True, which='both', linestyle='--', alpha=0.7)
     plt.legend(fontsize=10)
     plt.tight_layout()
+    plt.yscale('log', base = 10)
     plt.savefig("Distancia_total_x_Tempo_de_execucao.png")
     plt.show()
 

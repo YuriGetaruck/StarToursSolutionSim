@@ -637,8 +637,8 @@ class AnimatedGraphApp:
             self.update_graph()
             self.run_button.configure(state="normal")
 
-            if(algoritmo_sigla != "nn"):
-                self.analisar_log_e_gerar_graficos(log_file, iteracoes_selecionadas, self.get_distancia_otima())
+            # if(algoritmo_sigla != "nn"):
+            #     self.analisar_log_e_gerar_graficos(log_file, iteracoes_selecionadas, self.get_distancia_otima())
 
         # Cria e inicia a thread para executar o algoritmo
         thread = threading.Thread(target=run)
@@ -748,15 +748,20 @@ class AnimatedGraphApp:
 
         return self.fig, self.ax
         
-    def open_dataset(self, dataset_neme):
+    def open_dataset(self, dataset_name):
         matriz = []
-        with open(dataset_neme, 'r') as arquivo:
+        with open(dataset_name, 'r') as arquivo:
             linhas = arquivo.readlines()
             for idx, linha in enumerate(linhas):
                 valores = linha.split()
                 if len(valores) == 3:
-                    x, y, z = map(float, valores)
-                    matriz.append([idx, x, y, z])
+                    try:
+                        x, y, z = map(float, valores)
+                        matriz.append([idx, x, y, z])
+                    except ValueError:
+                        # Se a conversão para float falhar, tenta converter para int
+                        x, y, z = map(int, valores)
+                        matriz.append([idx, x, y, z])
         return np.array(matriz)
     
     def valida_caminho(self):
